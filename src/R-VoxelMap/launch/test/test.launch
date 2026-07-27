@@ -1,0 +1,21 @@
+<launch>
+
+	<arg name="rviz" default="true" />
+	<arg name="namespace" default="rvoxelmap" />
+
+	<group ns="$(arg namespace)">
+		<rosparam command="load" file="$(find rvoxelmap)/config/test.yaml" />
+
+		<param name="pcd_file" value="$(find rvoxelmap)/pcd/test.pcd" />
+
+
+		<node pkg="rvoxelmap" type="map_test" name="test" output="screen" > 
+			<!-- <remap from="/planes" to="/test/planes"/> -->
+		</node>
+	</group>
+
+	<group if="$(arg rviz)">
+		<node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz_rvoxelmap" args="-d $(find rvoxelmap)/rviz_cfg/test.rviz" />
+	</group>
+
+</launch>

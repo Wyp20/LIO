@@ -1,0 +1,1 @@
+Default log directory for R-VoxelMap map tests.

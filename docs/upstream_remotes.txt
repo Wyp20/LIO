@@ -1,0 +1,12 @@
+# Upstream remotes (nested .git removed for monorepo commit)
+AKF-LIO: https://github.com/xpxie/AKF-LIO.git
+direct_lidar_inertial_odometry: https://github.com/vectr-ucla/direct_lidar_inertial_odometry.git
+faster-lio: https://github.com/gaoxiang12/faster-lio.git
+FAST_LIO: https://github.com/hku-mars/FAST_LIO.git
+Point-LIO: https://github.com/hku-mars/Point-LIO.git
+PV-LIO: https://github.com/HViktorTsoi/PV-LIO.git
+R-VoxelMap: https://github.com/NKU-MobFly-Robotics/R-VoxelMap.git
+VoxelMapPlus_Public: https://github.com/uestc-icsp/VoxelMapPlus_Public.git
+BIEVR-LIO: https://github.com/ethz-asl/BIEVR-LIO.git
+rko_lio: https://github.com/PRBonn/rko_lio.git
+Super-LIO: https://github.com/Liansheng-Wang/Super-LIO.git

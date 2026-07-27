@@ -1,0 +1,69 @@
+common:
+    lid_topic:  "/velodyne_points"
+    imu_topic:  "/imu_data"
+
+preprocess:
+    lidar_type: 2                #1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for L515 LiDAR
+    scan_line: 64
+    blind: 1
+    point_filter_num: 1
+    calib_laser: true              # true for KITTI Odometry dataset
+
+
+mapping:
+    down_sample_size: 0.5
+    max_iteration: 3
+
+    voxel_size: 3.0
+    max_layer: 4
+    plannar_threshold: 0.01
+
+    max_points_size: 1000
+    max_root_points_size: 2000
+    layer_point_size: [5, 5, 5, 5, 5]
+    update_size_threshold: 5
+
+    update_inlier_distance_threshold: 0.2
+    
+    reinit_size_vec: [100, 200, 300, 500, 700, 1000]
+
+    lru_cache_capacity: 120000
+
+ransac:
+    ransac_max_iter: 20
+    ransac_sample_num: 4
+    ransac_inlier_distance_threshold: 0.2
+    ransac_isplane_p_threshold: 0.6
+    sample_seed: 42
+
+valid_check:
+    max_layer: 0
+    min_points_size: 20
+    resolution: 4
+
+noise_model:
+    ranging_cov: 0.04
+    angle_cov: 0.1
+    acc_cov_scale: 1.0
+    gyr_cov_scale: 0.5
+    
+imu:
+    imu_en: false
+    extrinsic_T: [ 0, 0, 0]
+    extrinsic_R: [ 1, 0, 0, 
+                   0, 1, 0, 
+                   0, 0, 1]
+
+visualization:
+    pub_voxel_map: false
+    pub_max_voxel_layer: 4         # only publish 0,1,2 layer's plane
+    pub_point_cloud: true
+    dense_map_enable: false
+    pub_point_cloud_skip: 1             # publish one points per five points
+
+    pub_effect: false
+
+    pub_all_plane_enable: false
+    pub_all_plane_layer_color_enable: false
+    pub_all_point_enable: false
+    pub_grid_map_enable: false

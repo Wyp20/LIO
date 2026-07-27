@@ -1,0 +1,43 @@
+mapping:
+    voxel_size: 3.0
+    max_layer: 4
+    plannar_threshold: 0.01
+    
+    max_points_size: 1000
+    max_cov_points_size: 1000
+    max_root_points_size: 10000
+    layer_point_size: [5, 5, 5, 5, 5]
+    update_size_threshold: 5
+    
+    update_inlier_distance_threshold: 0.1
+
+    reinit_size_vec: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+
+    lru_cache_capacity: 120000
+
+ransac:
+    ransac_max_iter: 10
+    ransac_sample_num: 4
+    ransac_inlier_distance_threshold: 0.2
+    ransac_isplane_p_threshold: 0.8
+    sample_seed: 42
+
+valid_check:
+    max_layer: 0
+    min_points_size: 10
+    resolution: 4
+    
+visualization:
+    pub_max_voxel_layer: 4
+    pub_all_plane_enable: true
+    pub_all_plane_layer_color_enable: true
+    pub_all_point_enable: true
+    pub_grid_map_enable: true
+
+downsample:
+  enable: false
+  voxel_size: 0.5
+
+choose_range:
+  enable: false
+  range_list: [-1, 0, 1, 2, -2, 1]

@@ -1,0 +1,167 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025 Meher V.R. Malladi.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+/**
+ * @file lio.hpp
+ * Core LIO class and utilities for RKO-LIO.
+ */
+
+#pragma once
+#include "voxel_hash_map.hpp"
+#include "util.hpp"
+
+/** Core namespace containing LIO data structures and state definitions. */
+namespace rko_lio::core {
+/** Core LiDAR-inertial odometry algorithm class. */
+class LIO {
+public:
+  /** Configuration parameters for odometry. */
+  struct Config {
+    /** Enable scan deskewing. */
+    bool deskew = true;
+
+    /** Maximum number of ICP iterations. */
+    size_t max_iterations = 100;
+
+    /** Size of voxel grid (m). */
+    double voxel_size = 1.0;
+
+    /** Max points per voxel. */
+    int max_points_per_voxel = 20;
+
+    /** Maximum lidar range (m). */
+    double max_range = 100.0;
+
+    /** Minimum lidar range (m). */
+    double min_range = 1.0;
+
+    /** ICP convergence threshold. */
+    double convergence_criterion = 1e-5;
+
+    /** Max distance for correspondences (m). */
+    double max_correspondence_distance = 0.5;
+
+    /** Thread count for data association (0 = automatic). */
+    int max_num_threads = 0;
+
+    /** Enable initialization phase. */
+    bool initialization_phase = false;
+
+    /** Maximum expected jerk (m/s³). */
+    double max_expected_jerk = 3;
+
+    /** Enable double downsampling. */
+    bool double_downsample = true;
+
+    /** Minimum weight for orientation regularization. */
+    double min_beta = 200;
+  };
+
+  /** Configuration parameters. */
+  Config config;
+
+  /** Local map. */
+  VoxelHashMap map;
+
+  /** Current LiDAR state estimate. */
+  State lidar_state;
+
+  /** IMU bias estimates when initialization is enabled. */
+  ImuBias imu_bias;
+
+  /** Mean body acceleration estimate. */
+  Eigen::Vector3d mean_body_acceleration = Eigen::Vector3d::Zero();
+
+  /** Covariance of body acceleration estimate. */
+  Eigen::Matrix3d body_acceleration_covariance = Eigen::Matrix3d::Identity();
+
+  /** IMU measurement statistics since last LiDAR frame. */
+  IntervalStats interval_stats;
+
+  explicit LIO(const Config& config_);
+
+  /** Add an IMU measurement expressed in the base frame. */
+  void add_imu_measurement(const ImuControl& base_imu);
+
+  /**
+   * Add an IMU measurement expressed in the IMU frame and transform it
+   * to the base frame using the given extrinsic calibration.
+   * @param extrinsic_imu2base Extrinsic transform from IMU to base frame.
+   * @param raw_imu Raw IMU measurement.
+   */
+  void add_imu_measurement(const Sophus::SE3d& extrinsic_imu2base, const ImuControl& raw_imu);
+
+  /**
+   * Register a LiDAR scan, applying deskewing based on the initial motion guess
+   * and clipping points beyond valid range.
+   * @param scan Input raw point cloud.
+   * @param timestamps Absolute timestamps corresponding to each scan point.
+   * @return Deskewed and clipped point cloud.
+   */
+  Vector3dVector register_scan(const Vector3dVector& scan, const TimestampVector& timestamps);
+
+  /**
+   * Register a LiDAR scan for which the extrinsic calibration from lidar to base
+   * has already been applied.
+   * @param extrinsic_lidar2base Extrinsic from lidar to base frame.
+   * @param scan Input raw point cloud.
+   * @param timestamps Absolute timestamps corresponding to each scan point.
+   * @return Deskewed and clipped scan in the original lidar frame.
+   */
+  Vector3dVector register_scan(const Sophus::SE3d& extrinsic_lidar2base,
+                               const Vector3dVector& scan,
+                               const TimestampVector& timestamps);
+
+  /** Sequence of registered scan poses with corresponding timestamps. */
+  std::vector<std::pair<Nsec, Sophus::SE3d>> poses_with_timestamps;
+
+  /** Base-frame state propagated from IMU measurements. Runs ahead of `lidar_state` between scans; reset to the
+   *  optimized lidar pose after each successful registration. Used for gravity compensation and for publishing
+   *  IMU-rate odometry from the ROS wrapper.
+   */
+  State imu_state;
+
+private:
+  /**
+   * Initialize internal odometry state using the given lidar timestamp.
+   * @param lidar_time Current lidar timestamp.
+   */
+  void initialize(const Nsec lidar_time);
+
+  /** First-scan path: stamps state, optionally seeds the map, logs the pose. */
+  Vector3dVector bootstrap_first_scan(const Vector3dVector& scan, const Nsec current_lidar_time);
+
+  /** Average body acceleration and angular velocity over the IMU interval, with init-phase and no-IMU fallbacks. */
+  std::pair<Eigen::Vector3d, Eigen::Vector3d> motion_priors_from_imu(const Nsec current_lidar_time);
+
+  /** True if odometry initialization has been completed. */
+  bool _initialized = false;
+
+  /** Timestamp of the most recent real IMU measurement. */
+  Nsec _last_real_imu_time{0};
+
+  /** Angular velocity of last true IMU measurement expressed in base frame. */
+  Eigen::Vector3d _last_real_base_imu_ang_vel = Eigen::Vector3d::Zero();
+};
+} // namespace rko_lio::core

@@ -1,0 +1,7 @@
+imu preprocess time: 0.011 ms
+downsample time: 3.778 ms
+kf update time: 11.740 ms
+map update time: 16.700 ms
+other time: 9.024 ms
+total time: 41.253 ms
+scan num: 4540

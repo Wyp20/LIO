@@ -1,0 +1,163 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2025 Meher V.R. Malladi.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include "rko_lio/core/lio.hpp"
+#include "rko_lio/core/process_timestamps.hpp"
+#include "stl_vector_eigen.hpp"
+#include <cmath>
+#include <cstdint>
+#include <pybind11/eigen.h>
+#include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
+
+namespace py = pybind11;
+using namespace pybind11::literals;
+using namespace rko_lio::core;
+
+PYBIND11_MAKE_OPAQUE(std::vector<Eigen::Vector3d>);
+PYBIND11_MAKE_OPAQUE(std::vector<double>);
+PYBIND11_MAKE_OPAQUE(std::vector<int64_t>);
+
+PYBIND11_MODULE(rko_lio_pybind, m) {
+  auto vector3dvector = pybind_eigen_vector_of_vector<Eigen::Vector3d>(
+      m, "_Vector3dVector", "std::vector<Eigen::Vector3d>", py::py_array_to_vectors_double<Eigen::Vector3d>);
+  py::bind_vector<std::vector<double>>(m, "_VectorDouble");
+  py::bind_vector<std::vector<int64_t>>(m, "_VectorInt64");
+
+  // for introspecting IMU data
+  py::class_<IntervalStats>(m, "_IntervalStats")
+      .def(py::init<>())
+      .def_readonly("imu_count", &IntervalStats::imu_count)
+      .def_readonly("angular_velocity_sum", &IntervalStats::angular_velocity_sum)
+      .def_readonly("body_acceleration_sum", &IntervalStats::body_acceleration_sum)
+      .def_readonly("imu_acceleration_sum", &IntervalStats::imu_acceleration_sum)
+      .def_readonly("imu_accel_mag_mean", &IntervalStats::imu_accel_mag_mean)
+      .def_readonly("welford_sum_of_squares", &IntervalStats::welford_sum_of_squares);
+
+  py::class_<LIO::Config>(m, "_LIOConfig")
+      .def(py::init<>())
+      .def_readwrite("deskew", &LIO::Config::deskew)
+      .def_readwrite("max_iterations", &LIO::Config::max_iterations)
+      .def_readwrite("voxel_size", &LIO::Config::voxel_size)
+      .def_readwrite("max_points_per_voxel", &LIO::Config::max_points_per_voxel)
+      .def_readwrite("max_range", &LIO::Config::max_range)
+      .def_readwrite("min_range", &LIO::Config::min_range)
+      .def_readwrite("convergence_criterion", &LIO::Config::convergence_criterion)
+      .def_readwrite("max_correspondence_distance", &LIO::Config::max_correspondence_distance)
+      .def_readwrite("max_num_threads", &LIO::Config::max_num_threads)
+      .def_readwrite("initialization_phase", &LIO::Config::initialization_phase)
+      .def_readwrite("max_expected_jerk", &LIO::Config::max_expected_jerk)
+      .def_readwrite("double_downsample", &LIO::Config::double_downsample)
+      .def_readwrite("min_beta", &LIO::Config::min_beta);
+
+  py::class_<LIO>(m, "_LIO")
+      .def(py::init<const LIO::Config&>(), "config"_a)
+      .def(
+          "add_imu_measurement",
+          [](LIO& self, const Eigen::Vector3d& accel, const Eigen::Vector3d& gyro, const int64_t time_ns) {
+            self.add_imu_measurement(ImuControl{
+                .time = Nsec(time_ns),
+                .acceleration = accel,
+                .angular_velocity = gyro,
+            });
+          },
+          "acceleration"_a, "angular_velocity"_a, "time"_a)
+      .def(
+          "add_imu_measurement",
+          [](LIO& self, const Eigen::Matrix4d& extrinsic_imu2base, const Eigen::Vector3d& accel,
+             const Eigen::Vector3d& gyro, const int64_t time_ns) {
+            self.add_imu_measurement(Sophus::SE3d(extrinsic_imu2base), ImuControl{
+                                                                           .time = Nsec(time_ns),
+                                                                           .acceleration = accel,
+                                                                           .angular_velocity = gyro,
+                                                                       });
+          },
+          "extrinsic_imu2base"_a, "acceleration"_a, "angular_velocity"_a, "time"_a)
+      .def(
+          "register_scan",
+          [](LIO& self, const std::vector<Eigen::Vector3d>& scan, const std::vector<int64_t>& timestamps_ns) {
+            TimestampVector timestamps(timestamps_ns.size());
+            std::transform(timestamps_ns.cbegin(), timestamps_ns.cend(), timestamps.begin(),
+                           [](const int64_t t) { return Nsec(t); });
+            return self.register_scan(scan, timestamps);
+          },
+          "scan"_a, "timestamps"_a)
+      .def(
+          "register_scan",
+          [](LIO& self, const Eigen::Matrix4d& extrinsic_lidar2base, const std::vector<Eigen::Vector3d>& scan,
+             const std::vector<int64_t>& timestamps_ns) {
+            TimestampVector timestamps(timestamps_ns.size());
+            std::transform(timestamps_ns.cbegin(), timestamps_ns.cend(), timestamps.begin(),
+                           [](const int64_t t) { return Nsec(t); });
+            return self.register_scan(Sophus::SE3d(extrinsic_lidar2base), scan, timestamps);
+          },
+          "extrinsic_lidar2base"_a, "scan"_a, "timestamps"_a)
+      .def("map_point_cloud", [](LIO& self) { return self.map.pointcloud(); })
+      .def("pose", [](LIO& self) { return self.lidar_state.pose.matrix(); })
+      .def("imu_pose", [](LIO& self) { return self.imu_state.pose.matrix(); })
+      .def("imu_velocity", [](LIO& self) { return self.imu_state.velocity; })
+      .def("imu_time", [](LIO& self) { return self.imu_state.time.count(); })
+      .def("poses_with_timestamps",
+           [](LIO& self) {
+             const size_t n = self.poses_with_timestamps.size();
+             std::vector<int64_t> times_ns(n);
+             pybind11::array_t<double> poses({n, static_cast<size_t>(7)});
+             // https://pybind11.readthedocs.io/en/stable/advanced/pycpp/numpy.html#direct-access
+             auto pose_buf = poses.mutable_unchecked<2>();
+             for (size_t i = 0; i < n; ++i) {
+               const auto& [time, pose] = self.poses_with_timestamps[i];
+               times_ns[i] = time.count();
+               const Eigen::Vector3d& trans = pose.translation();
+               const Eigen::Quaterniond& q = pose.unit_quaternion();
+               pose_buf(i, 0) = trans.x();
+               pose_buf(i, 1) = trans.y();
+               pose_buf(i, 2) = trans.z();
+               pose_buf(i, 3) = q.x();
+               pose_buf(i, 4) = q.y();
+               pose_buf(i, 5) = q.z();
+               pose_buf(i, 6) = q.w();
+             }
+             return pybind11::make_tuple(times_ns, poses);
+           })
+      .def_readonly("interval_stats", &LIO::interval_stats);
+
+  using TPConfig = TimestampProcessingConfig;
+  py::class_<TPConfig>(m, "_TimestampProcessingConfig")
+      .def(py::init<>())
+      .def_readwrite("multiplier_to_seconds", &TPConfig::multiplier_to_seconds)
+      .def_readwrite("force_absolute", &TPConfig::force_absolute)
+      .def_readwrite("force_relative", &TPConfig::force_relative);
+
+  m.def(
+      "_process_timestamps",
+      [](const std::vector<double>& raw_ts, const int64_t header_stamp_ns, const TPConfig& config) {
+        const auto& [begin, end, abs_ts] = process_timestamps(raw_ts, Nsec(header_stamp_ns), config);
+        std::vector<int64_t> abs_ts_ns(abs_ts.size());
+        std::transform(abs_ts.cbegin(), abs_ts.cend(), abs_ts_ns.begin(), [](const Nsec t) { return t.count(); });
+        return std::make_tuple(begin.count(), end.count(), std::move(abs_ts_ns));
+      },
+      "raw_timestamps"_a, "header_stamp"_a, "config"_a);
+}

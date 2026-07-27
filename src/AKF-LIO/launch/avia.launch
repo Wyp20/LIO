@@ -1,0 +1,15 @@
+<launch>
+  <!-- Launch file -->
+
+    <arg name="rviz" default="true" />
+
+    <rosparam command="load" file="$(find akf_lio)/config/avia.yaml" />
+
+    <param name="runtime_pos_log_enable" type="bool" value="0" />
+    <node pkg="akf_lio" type="run_mapping_online" name="laserMapping" output="screen" />
+
+    <group if="$(arg rviz)">
+      <node launch-prefix="nice" pkg="rviz" type="rviz" name="ivox_rviz" args="-d $(find akf_lio)/rviz_cfg/loam.rviz" />
+    </group>
+
+</launch>

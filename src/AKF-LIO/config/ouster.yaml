@@ -1,0 +1,42 @@
+common:
+  lid_topic: "/ouster/points"
+  imu_topic: "/ouster/imu"
+
+preprocess:
+  lidar_type: 3                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR,
+  scan_line: 6
+  blind: 1
+  time_scale: 1e-9                 
+
+mapping:
+  acc_cov: 0.1
+  gyr_cov: 0.1
+  b_acc_cov: 0.0001
+  b_gyr_cov: 0.0001
+  lidar_cov: 0.001
+  extrinsic_T: [ 0, 0, 0 ]
+  extrinsic_R: [ 1.,  0.,  0.,
+                 0.,  1.,  0.,
+                 0.,  0.,  1. ]
+
+publish:
+  path_publish_en: true
+  scan_reg_pub_en: true    # publish effect pointcloud
+  dense_publish_en: true  # publish dense pointcloud
+  map_publish_en: false   #pub gaussian mean     
+  gaussian_publish_en: false  # could be very slow with many gaussians decided by gaussian_pub_dis and gaussian_pub_min_cnt
+  gaussian_pub_dis: 10 # meter, distance to current pose
+  gaussian_pub_min_cnt: 5 # minimum cnt of gaussians to publish
+
+adap_voxel_size_en: true
+target_point_size: 2000
+point_filter_num: 1
+max_iteration: 3
+init_uncertainty: 0.01
+t_ratio_b: 1
+akf_update_alpha: 1
+ivox_grid_resolution: 0.5  # map voxel resolution
+ivox_nearby_type: 26 # 0, 6, 18, 26
+t_mal: 7.82 # mal distance threshold
+t_stop_pseudo_merge: 1 # threshold of pseudo merge
+time_to_delete_local_map: 10000 #second, time to delete local map, set small if memory is not enough

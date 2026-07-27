@@ -1,0 +1,50 @@
+common:
+  lid_topic: "/livox/lidar"
+  imu_topic: "/livox/imu"
+
+preprocess:
+  lidar_type: 1                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR,
+  scan_line: 6
+  blind: 1
+  time_scale: 1e-9                 
+
+mapping:
+  acc_cov: 0.1
+  gyr_cov: 0.1
+  b_acc_cov: 0.0001
+  b_gyr_cov: 0.0001
+  lidar_cov: 0.001
+  extrinsic_T: [ 0.04165, 0.02326, -0.0284 ]
+  extrinsic_R: [ 1.,  0.,  0.,
+                 0.,  1.,  0.,
+                 0.,  0.,  1. ]
+
+publish:
+  path_publish_en: true
+  scan_reg_pub_en: true    # publish effect pointcloud
+  dense_publish_en: true  # publish dense pointcloud
+  map_publish_en: false   #pub gaussian mean     
+  gaussian_publish_en: false  # could be very slow with many gaussians decided by gaussian_pub_dis and gaussian_pub_min_cnt
+  gaussian_pub_dis: 10 # meter, distance to current pose
+  gaussian_pub_min_cnt: 5 # minimum cnt of gaussians to publish
+
+adap_voxel_size_en: true
+target_point_size: 2000
+point_filter_num: 1
+max_iteration: 3
+init_uncertainty: 0.01
+t_ratio_b: 1
+akf_update_alpha: 1
+ivox_grid_resolution: 0.5  # map voxel resolution
+ivox_nearby_type: 26 # 0, 6, 18, 26
+t_mal: 7.82 # mal distance threshold
+t_stop_pseudo_merge: 1 # threshold of pseudo merge
+time_to_delete_local_map: 10000 #second, time to delete local map, set small if memory is not enough
+
+# HKairport01: -s 80 -u 650 |===| HKairport02: -s 64 -u 339 |===| HKairport03: -s 65 -u 248
+# HKairport_GNSS01: -s 100 -u 650 |===| HKairport_GNSS02: -s 78 -u 337 |===| HKairport_GNSS03: -s 100 -u 248
+# HKisland01: -s 100 -u 580 |===| HKisland02: -s 95 -u 305 |===| HKisland03: -s 84 -u 226
+# HKisland_GNSS01: -s 118 -u 585 |===| HKisland_GNSS02: -s 98 -u 302 |===| HKisland_GNSS03: -s 100 -u 224
+# AMtown01: -s 79 -u 1225 |===| AMtown02: -s 63 -u 663 |===| AMtown03: -s 105 -u 452
+# AMvalley01: -s 80 -u 1045 |===| AMvalley02: -s 80 -u 548 |===| AMvalley03: -s 84 -u 396
+# Featureless_GNSS01: -s 92 -u 1261 |===| Featureless_GNSS02: -s 48 -u 502 |===| Featureless_GNSS03: -s 22 -u 1250
