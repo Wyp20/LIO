@@ -17,7 +17,7 @@ optimization:
 
 imu:  
     window_s: 10 # Time window for the inertial optimization [s]
-    t_init: 0.2 # Time to initialize bias and gravity [s]
+    t_init: 1.0 # Time to initialize bias and gravity [s]
     frame: "imu"
 
 debug:

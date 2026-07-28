@@ -33,6 +33,7 @@ void ImuProcess::Reset()
   imu_need_init_    = true;
   init_iter_num     = 1;
   after_imu_init_   = false;
+  imu_init_start_time_ = -1.0;
   
   time_last_scan = 0.0;
 }
@@ -71,7 +72,6 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, int &N)
 {
   /** 1. initializing the gravity, gyro bias, acc and gyro covariance
    ** 2. normalize the acceleration measurenments to unit gravity **/
-  ROS_INFO("IMU Initializing: %.1f %%", double(N) / MAX_INI_COUNT * 100);
   V3D cur_acc, cur_gyr;
   
   if (b_first_frame_)
@@ -83,7 +83,11 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, int &N)
     const auto &gyr_acc = meas.imu.front()->angular_velocity;
     mean_acc << imu_acc.x, imu_acc.y, imu_acc.z;
     mean_gyr << gyr_acc.x, gyr_acc.y, gyr_acc.z;
+    imu_init_start_time_ = meas.imu.front()->header.stamp.toSec();
   }
+
+  double init_ratio = (meas.imu.back()->header.stamp.toSec() - imu_init_start_time_) / IMU_INIT_TIME;
+  ROS_INFO("IMU Initializing: %.1f %%", (init_ratio < 1.0 ? init_ratio : 1.0) * 100.0);
 
   for (const auto &imu : meas.imu)
   {
@@ -114,7 +118,7 @@ void ImuProcess::Process(const MeasureGroup &meas, PointCloudXYZI::Ptr cur_pcl_u
 
         imu_need_init_ = true;
 
-        if (init_iter_num > MAX_INI_COUNT)
+        if (meas.imu.back()->header.stamp.toSec() - imu_init_start_time_ >= IMU_INIT_TIME)
         {
           ROS_INFO("IMU Initializing: %.1f %%", 100.0);
           imu_need_init_ = false;

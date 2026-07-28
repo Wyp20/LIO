@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Grid1
         - /mapping1
+        - /mapping1/current_scan1
         - /mapping1/history_scan1
         - /mapping1/history_scan1/Autocompute Value Bounds1
         - /Odometry1/Odometry1
@@ -81,7 +82,7 @@ Visualization Manager:
           Channel Name: intensity
           Class: rviz/PointCloud2
           Color: 238; 238; 236
-          Color Transformer: Intensity
+          Color Transformer: FlatColor
           Decay Time: 0
           Enabled: true
           Invert Rainbow: false
@@ -351,7 +352,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 499.5119323730469
+      Distance: 88.17066192626953
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -367,9 +368,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.044796183705329895
+      Pitch: 0.48979589343070984
       Target Frame: global
-      Yaw: 4.387201309204102
+      Yaw: 4.58720588684082
     Saved: ~
 Window Geometry:
   Displays:

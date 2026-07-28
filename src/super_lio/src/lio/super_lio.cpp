@@ -114,17 +114,21 @@ void SuperLIO::process(){
 
 bool SuperLIO::kf_init(){
   static int imu_cout = 0;
+  static double imu_init_start = -1.0;
   static V3 mean_gyro = V3::Zero();
   static V3 mean_acce = V3::Zero();
 
   for(auto& imu: measures_.imu){
+    if(imu_init_start < 0.0){
+      imu_init_start = imu.secs;
+    }
     imu_cout ++;
     mean_gyro += (imu.gyr - mean_gyro) / imu_cout;
     mean_acce += (imu.acc - mean_acce) / imu_cout;
   }
 
-  /// 100 Hz for 1 second.
-  if(imu_cout < 50){
+  /// Accumulate IMU for 1 second before gravity alignment.
+  if(measures_.imu.empty() || measures_.imu.back().secs - imu_init_start < 1.0){
     return false;
   }
 

@@ -251,7 +251,7 @@ void dlio::OdomNode::getParams() {
   // IMU
   ros::param::param<bool>("~dlio/odom/imu/calibration/accel", this->calibrate_accel_, true);
   ros::param::param<bool>("~dlio/odom/imu/calibration/gyro", this->calibrate_gyro_, true);
-  ros::param::param<double>("~dlio/odom/imu/calibration/time", this->imu_calib_time_, 3.0);
+  ros::param::param<double>("~dlio/odom/imu/calibration/time", this->imu_calib_time_, 1.0);
   ros::param::param<int>("~dlio/odom/imu/bufferSize", this->imu_buffer_size_, 2000);
 
   std::vector<float> accel_default{0., 0., 0.}; std::vector<float> prior_accel_bias;
@@ -885,7 +885,7 @@ void dlio::OdomNode::callbackImu(const sensor_msgs::Imu::ConstPtr& imu_raw) {
     this->first_imu_stamp = imu->header.stamp.toSec();
   }
 
-  // IMU calibration procedure - do for three seconds
+  // IMU calibration procedure - do for imu_calib_time_ seconds
   if (!this->imu_calibrated) {
 
     static int num_samples = 0;

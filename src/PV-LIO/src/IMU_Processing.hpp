@@ -26,7 +26,7 @@
 
 /// *************Preconfiguration
 
-#define MAX_INI_COUNT (20)
+#define IMU_INIT_TIME (1.0)   // seconds of IMU data for gravity alignment
 
 const bool time_list(PointType &x, PointType &y) {return (x.curvature < y.curvature);};
 
@@ -79,6 +79,7 @@ class ImuProcess
   V3D acc_s_last;
   double start_timestamp_;
   double last_lidar_end_time_;
+  double imu_init_start_time_ = -1.0;
   int    init_iter_num = 1;
   bool   b_first_frame_ = true;
   bool   imu_need_init_ = true;
@@ -111,6 +112,7 @@ void ImuProcess::Reset()
   angvel_last       = Zero3d;
   imu_need_init_    = true;
   start_timestamp_  = -1;
+  imu_init_start_time_ = -1.0;
   init_iter_num     = 1;
   v_imu_.clear();
   IMUpose.clear();
@@ -173,6 +175,7 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
     mean_acc << imu_acc.x, imu_acc.y, imu_acc.z;
     mean_gyr << gyr_acc.x, gyr_acc.y, gyr_acc.z;
     first_lidar_time = meas.lidar_beg_time;
+    imu_init_start_time_ = meas.imu.front()->header.stamp.toSec();
   }
 
   for (const auto &imu : meas.imu)
@@ -193,16 +196,19 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
     N ++;
   }
   state_ikfom init_state = kf_state.get_x();
-  init_state.grav = S2(- mean_acc / mean_acc.norm() * G_m_s2);
-  
-  //state_inout.rot = Eye3d; // Exp(mean_acc.cross(V3D(0, 0, -1 / scale_gravity)));
+
+  // Gravity alignment via g2R (FromTwoVectors + yaw removal): level IMU, world gravity (0,0,-G).
+  M3D init_rot = g2R(mean_acc);
+  V3D ref_gravity(0, 0, -G_m_s2);
+  init_state.rot = SO3(init_rot);
+  init_state.grav = S2(ref_gravity);
   init_state.bg  = mean_gyr;
   init_state.offset_T_L_I = Lidar_T_wrt_IMU;
   init_state.offset_R_L_I = Lidar_R_wrt_IMU;
   kf_state.change_x(init_state);
 
   // initial world pose
-  Initial_R_wrt_G = SO3(g2R(mean_acc));
+  Initial_R_wrt_G = SO3(init_rot);
 
   esekfom::esekf<state_ikfom, 12, input_ikfom>::cov init_P = kf_state.get_P();
   init_P.setIdentity();
@@ -359,7 +365,7 @@ void ImuProcess::Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 
     last_imu_   = meas.imu.back();
 
     state_ikfom imu_state = kf_state.get_x();
-    if (init_iter_num > MAX_INI_COUNT)
+    if (meas.imu.back()->header.stamp.toSec() - imu_init_start_time_ >= IMU_INIT_TIME)
     {
       cov_acc *= pow(G_m_s2 / mean_acc.norm(), 2);
       imu_need_init_ = false;

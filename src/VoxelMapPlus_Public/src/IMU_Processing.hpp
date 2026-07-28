@@ -26,7 +26,7 @@
 
 /// *************Preconfiguration
 
-#define MAX_INI_COUNT (200)
+#define IMU_INIT_TIME (1.0)   // seconds of IMU data for gravity alignment
 
 /*TEST3*/
 static int TEST3 = 0;
@@ -99,6 +99,7 @@ private:
     V3D acc_s_last;
     double start_timestamp_;
     double time_last_scan_;
+    double imu_init_start_time_ = -1.0;
     int init_iter_num = 1;
     bool b_first_frame_ = true;
     bool imu_need_init_ = true;
@@ -134,6 +135,7 @@ void ImuProcess::Reset() {
     angvel_last = Zero3d;
     imu_need_init_ = true;
     start_timestamp_ = -1;
+    imu_init_start_time_ = -1.0;
     init_iter_num = 1;
     v_imu_.clear();
     IMUpose.clear();
@@ -162,7 +164,6 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, StatesGroup &state_inout,
                           int &N) {
     /** 1. initializing the gravity, gyro bias
      ** 2. normalize the acceleration measurenments to unit gravity **/
-    ROS_INFO("IMU Initializing: %.1f %%", double(N) / MAX_INI_COUNT * 100);
     V3D cur_acc, cur_gyr;
 
     if (b_first_frame_) {
@@ -174,7 +175,11 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, StatesGroup &state_inout,
         mean_acc << imu_acc.x, imu_acc.y, imu_acc.z;
         mean_gyr << gyr_acc.x, gyr_acc.y, gyr_acc.z;
         first_lidar_time = meas.lidar_beg_time;
+        imu_init_start_time_ = meas.imu.front()->header.stamp.toSec();
     }
+
+    double init_ratio = (meas.imu.back()->header.stamp.toSec() - imu_init_start_time_) / IMU_INIT_TIME;
+    ROS_INFO("IMU Initializing: %.1f %%", (init_ratio < 1.0 ? init_ratio : 1.0) * 100.0);
 
     for (const auto &imu: meas.imu) {
         const auto &imu_acc = imu->linear_acceleration;
@@ -187,9 +192,17 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, StatesGroup &state_inout,
         N++;
     }
 
-    state_inout.gravity = -mean_acc / mean_acc.norm() * G_m_s2;
-    state_inout.rot_end =
-            Eye3d;
+    // Gravity alignment: level the IMU so world gravity is (0,0,-G), then zero yaw.
+    V3D gravity = -mean_acc / mean_acc.norm() * G_m_s2;
+    V3D ref_gravity(0, 0, -G_m_s2);
+    M3D init_rot = Eigen::Quaterniond::FromTwoVectors(gravity, ref_gravity).toRotationMatrix();
+    V3D n = init_rot.col(0);
+    double yaw = atan2(n(1), n(0));
+    M3D R_yaw_inv = Eigen::AngleAxisd(-yaw, V3D::UnitZ()).toRotationMatrix();
+    init_rot = R_yaw_inv * init_rot;
+
+    state_inout.gravity = ref_gravity;
+    state_inout.rot_end = init_rot;
     state_inout.bias_g = mean_gyr;
     last_imu_ = meas.imu.back();
 }
@@ -382,7 +395,7 @@ void ImuProcess::Process(const MeasureGroup &meas, StatesGroup &stat,
         IMU_init(meas, stat, init_iter_num);
         imu_need_init_ = true;
         last_imu_ = meas.imu.back();
-        if (init_iter_num > MAX_INI_COUNT) {
+        if (meas.imu.back()->header.stamp.toSec() - imu_init_start_time_ >= IMU_INIT_TIME) {
             imu_need_init_ = false;
             cov_acc = Eye3d * cov_acc_scale;
             cov_gyr = Eye3d * cov_gyr_scale;

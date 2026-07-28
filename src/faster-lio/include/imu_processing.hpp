@@ -16,7 +16,7 @@
 
 namespace faster_lio {
 
-constexpr int MAX_INI_COUNT = 20;
+constexpr double IMU_INIT_TIME = 1.0;  // seconds of IMU data for gravity alignment
 
 bool time_list(const PointType &x, const PointType &y) { return (x.curvature < y.curvature); };
 
@@ -63,6 +63,7 @@ class ImuProcess {
     common::V3D angvel_last_;
     common::V3D acc_s_last_;
     double last_lidar_end_time_ = 0;
+    double imu_init_start_time_ = -1.0;
     int init_iter_num_ = 1;
     bool b_first_frame_ = true;
     bool imu_need_init_ = true;
@@ -90,6 +91,7 @@ void ImuProcess::Reset() {
     mean_gyr_ = common::V3D(0, 0, 0);
     angvel_last_ = common::Zero3d;
     imu_need_init_ = true;
+    imu_init_start_time_ = -1.0;
     init_iter_num_ = 1;
     v_imu_.clear();
     IMUpose_.clear();
@@ -125,6 +127,7 @@ void ImuProcess::IMUInit(const common::MeasureGroup &meas, esekfom::esekf<state_
         const auto &gyr_acc = meas.imu_.front()->angular_velocity;
         mean_acc_ << imu_acc.x, imu_acc.y, imu_acc.z;
         mean_gyr_ << gyr_acc.x, gyr_acc.y, gyr_acc.z;
+        imu_init_start_time_ = meas.imu_.front()->header.stamp.toSec();
     }
 
     for (const auto &imu : meas.imu_) {
@@ -144,8 +147,19 @@ void ImuProcess::IMUInit(const common::MeasureGroup &meas, esekfom::esekf<state_
         N++;
     }
     state_ikfom init_state = kf_state.get_x();
-    init_state.grav = S2(-mean_acc_ / mean_acc_.norm() * common::G_m_s2);
 
+    // Gravity alignment: level the IMU so world gravity is (0,0,-G), then zero yaw.
+    common::V3D gravity = -mean_acc_ / mean_acc_.norm() * common::G_m_s2;
+    common::V3D ref_gravity(0, 0, -common::G_m_s2);
+    common::M3D init_rot =
+        Eigen::Quaterniond::FromTwoVectors(gravity, ref_gravity).toRotationMatrix();
+    common::V3D n = init_rot.col(0);
+    double yaw = atan2(n(1), n(0));
+    common::M3D R_yaw_inv = Eigen::AngleAxisd(-yaw, common::V3D::UnitZ()).toRotationMatrix();
+    init_rot = R_yaw_inv * init_rot;
+
+    init_state.rot = SO3(init_rot);
+    init_state.grav = S2(ref_gravity);
     init_state.bg = mean_gyr_;
     init_state.offset_T_L_I = Lidar_T_wrt_IMU_;
     init_state.offset_R_L_I = Lidar_R_wrt_IMU_;
@@ -301,7 +315,7 @@ void ImuProcess::Process(const common::MeasureGroup &meas, esekfom::esekf<state_
         last_imu_ = meas.imu_.back();
 
         state_ikfom imu_state = kf_state.get_x();
-        if (init_iter_num_ > MAX_INI_COUNT) {
+        if (meas.imu_.back()->header.stamp.toSec() - imu_init_start_time_ >= IMU_INIT_TIME) {
             cov_acc_ *= pow(common::G_m_s2 / mean_acc_.norm(), 2);
             imu_need_init_ = false;
 

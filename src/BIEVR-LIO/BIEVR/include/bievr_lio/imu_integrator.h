@@ -14,7 +14,7 @@ static constexpr double kGMagnitude = 9.80665;
 using GyroMap = std::map<uint64_t, V3>;
 
 struct ImuConfig {
-  double t_init = 0.5;  // duration of bias-init phase, used by Pipeline
+  double t_init = 1.0;  // duration of bias-init phase, used by Pipeline
   double gyro_oversample_freq = 500;
   double window_length_s = 5.0;  // length of optimization window, used by Pipeline
   // Accelerometer normalization mode, resolved during bias estimation:

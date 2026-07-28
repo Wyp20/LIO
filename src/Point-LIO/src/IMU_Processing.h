@@ -22,7 +22,7 @@
 
 /// *************Preconfiguration
 
-#define MAX_INI_COUNT (100)
+#define IMU_INIT_TIME (1.0)   // seconds of IMU data for gravity alignment
 const bool time_list(PointType &x, PointType &y); // {return (x.curvature < y.curvature);};
 
 /// *************IMU Process and undistortion
@@ -49,6 +49,7 @@ class ImuProcess
   bool   after_imu_init_ = false;
   bool   b_first_frame_ = true;
   double time_last_scan = 0.0;
+  double imu_init_start_time_ = -1.0;
   V3D cov_gyr_scale = V3D(0.0001, 0.0001, 0.0001);
   V3D cov_vel_scale = V3D(0.0001, 0.0001, 0.0001);
 

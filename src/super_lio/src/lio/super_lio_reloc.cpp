@@ -136,6 +136,7 @@ bool SuperLIOReLoc::kf_init(){
   const int need_init_frames = 10;
   static int imu_cout = 0;
   static int init_frame_count = 0;
+  static double imu_init_start = -1.0;
   static V3 mean_gyro = V3::Zero();
   static V3 mean_acce = V3::Zero();
   
@@ -143,6 +144,7 @@ bool SuperLIOReLoc::kf_init(){
   if(flg_get_init_guess_){
     imu_cout = 0;
     init_frame_count = 0;
+    imu_init_start = -1.0;
     init_obs_data_->clear();
     mean_gyro = V3::Zero();
     mean_acce = V3::Zero();
@@ -167,12 +169,16 @@ bool SuperLIOReLoc::kf_init(){
   init_frame_count++;
 
   for(auto& imu: measures_.imu){
+    if(imu_init_start < 0.0){
+      imu_init_start = imu.secs;
+    }
     imu_cout ++;
     mean_gyro += (imu.gyr - mean_gyro) / imu_cout;
     mean_acce += (imu.acc - mean_acce) / imu_cout;
   }
 
-  if(imu_cout < 20){
+  /// Accumulate IMU for 1 second before gravity alignment.
+  if(measures_.imu.empty() || measures_.imu.back().secs - imu_init_start < 1.0){
     return false;
   }
 
@@ -228,6 +234,7 @@ bool SuperLIOReLoc::kf_init(){
     /// reset init state.
     imu_cout = 0;
     init_frame_count = 0;
+    imu_init_start = -1.0;
     init_obs_data_->clear();
     mean_gyro = V3::Zero();
     mean_acce = V3::Zero();

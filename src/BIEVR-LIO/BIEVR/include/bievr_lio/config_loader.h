@@ -248,7 +248,7 @@ inline bool loadConfigFromYaml(const std::vector<std::string>& yaml_paths, Confi
 
   // --- imu (params side: inertial window + normalization) ---
   if (!config_internal::getPositive(yaml, "imu", "window_s", 10., hc.imu.window_length_s) ||
-      !config_internal::getPositive(yaml, "imu", "t_init", 0.2, hc.imu.t_init)) {
+      !config_internal::getPositive(yaml, "imu", "t_init", 1.0, hc.imu.t_init)) {
     return false;
   }
   // Accelerometer normalization, resolved during bias estimation:
