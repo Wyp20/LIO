@@ -6,8 +6,8 @@ logs/
 .catkin_tools/
 .catkin_workspace
 
-# benchmark outputs
-results/
+# benchmark outputs (workspace root only; do not match */doc/results/)
+/results/
 
 # editors / OS
 .vscode/

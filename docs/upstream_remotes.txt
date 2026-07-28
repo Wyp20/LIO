@@ -1,4 +1,10 @@
-# Upstream remotes (nested .git removed for monorepo commit)
+# Upstream remotes (reference only)
+#
+# Layout: single LIO monorepo. Algorithm trees under src/ and third_party/
+# are plain tracked files — nested .git directories are NOT kept. Clone scripts
+# may fetch upstream temporarily; after import, drop nested .git so only the
+# outer LIO repository remains.
+
 AKF-LIO: https://github.com/xpxie/AKF-LIO.git
 direct_lidar_inertial_odometry: https://github.com/vectr-ucla/direct_lidar_inertial_odometry.git
 faster-lio: https://github.com/gaoxiang12/faster-lio.git
