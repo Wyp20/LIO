@@ -83,6 +83,9 @@ public:
 private:
     void IMU_init(const MeasureGroup &meas, StatesGroup &state, int &N);
     void UndistortPcl(const MeasureGroup &meas, StatesGroup &state_inout, PointCloudXYZI &surf_pcl_out);
+    // LiDAR-only: constant-velocity / constant-angular-rate propagation
+    void only_propag(const MeasureGroup &meas, StatesGroup &state_inout,
+                     PointCloudXYZI::Ptr &pcl_out);
 
     PointCloudXYZI::Ptr cur_pcl_un_;
     sensor_msgs::ImuConstPtr last_imu_;
@@ -285,8 +288,6 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas,
     state_inout.pos_end =
             pos_imu + note * vel_imu * dt + note * 0.5 * acc_imu * dt * dt;
 
-    auto pos_liD_e =
-            state_inout.pos_end + state_inout.rot_end * Lid_offset_to_IMU;
     /*** undistort each surf lidar point (backward propagation) ***/
     auto it_surf_pcl = surf_pcl_out.points.end() - 1;
     for (auto it_kp = IMUpose.end() - 1; it_kp != IMUpose.begin(); it_kp--) {
@@ -304,14 +305,18 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas,
             /* Transform to the 'end' frame, using only the rotation
              * Note: Compensation direction is INVERSE of Frame's moving direction
              * So if we want to compensate a point at timestamp-i to the frame-e
-             * P_compensate = R_imu_e ^ T * (R_i * P_i + T_ei) where T_ei is
-             * represented in global frame */
+             * P_compensate = R_LI^T * (R_e^T * (R_i * (R_LI * P_i + t_LI) + T_ei) - t_LI)
+             * where T_ei is represented in global frame */
             M3D R_i(R_imu * Exp(angvel_avr, dt));
-            V3D T_ei(pos_imu + vel_imu * dt + 0.5 * acc_imu * dt * dt +
-                     R_i * Lid_offset_to_IMU - pos_liD_e);
+            V3D T_ei(pos_imu + vel_imu * dt + 0.5 * acc_imu * dt * dt -
+                     state_inout.pos_end);
 
             V3D P_i(it_surf_pcl->x, it_surf_pcl->y, it_surf_pcl->z);
-            V3D P_compensate = state_inout.rot_end.transpose() * (R_i * P_i + T_ei);
+            V3D P_compensate = Lid_rot_to_IMU.transpose() *
+                               (state_inout.rot_end.transpose() *
+                                    (R_i * (Lid_rot_to_IMU * P_i + Lid_offset_to_IMU) +
+                                     T_ei) -
+                                Lid_offset_to_IMU);
 
             /// save Undistorted points and their rotation
             it_surf_pcl->x = P_compensate(0);
@@ -322,6 +327,48 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas,
                 break;
         }
     }
+}
+
+// Constant velocity model for LiDAR-only mode (ported from VoxelMap / R-VoxelMap).
+// bias_g is reused as angular rate under the constant-rate assumption.
+void ImuProcess::only_propag(const MeasureGroup &meas, StatesGroup &state_inout,
+                             PointCloudXYZI::Ptr &pcl_out) {
+    const double &pcl_beg_time = meas.lidar_beg_time;
+
+    pcl_out = meas.surf_lidar;
+    if (pcl_out->points.empty()) {
+        return;
+    }
+
+    MD(DIM_STATE, DIM_STATE) F_x, cov_w;
+    double dt = 0;
+
+    if (b_first_frame_) {
+        dt = 0.1;
+        b_first_frame_ = false;
+        time_last_scan_ = pcl_beg_time;
+    } else {
+        dt = pcl_beg_time - time_last_scan_;
+        time_last_scan_ = pcl_beg_time;
+    }
+
+    /* covariance propagation */
+    M3D Exp_f = Exp(state_inout.bias_g, dt);
+
+    F_x.setIdentity();
+    cov_w.setZero();
+
+    F_x.block<3, 3>(0, 0) = Exp(state_inout.bias_g, -dt);
+    F_x.block<3, 3>(0, 9) = Eye3d * dt;
+    F_x.block<3, 3>(3, 6) = Eye3d * dt;
+    cov_w.block<3, 3>(9, 9).diagonal() =
+        cov_gyr * dt * dt; // for omega in constant model
+    cov_w.block<3, 3>(6, 6).diagonal() =
+        cov_acc * dt * dt; // for velocity in constant model
+
+    state_inout.cov = F_x * state_inout.cov * F_x.transpose() + cov_w;
+    state_inout.rot_end = state_inout.rot_end * Exp_f;
+    state_inout.pos_end = state_inout.pos_end + state_inout.vel_end * dt;
 }
 
 void ImuProcess::Process(const MeasureGroup &meas, StatesGroup &stat,
@@ -359,7 +406,6 @@ void ImuProcess::Process(const MeasureGroup &meas, StatesGroup &stat,
         cout << "No IMU, use constant velocity model" << endl;
         cov_acc = Eye3d * cov_acc_scale;
         cov_gyr = Eye3d * cov_gyr_scale;
-        cout << "此版本only_propag暂停使用" << endl;
-        exit(1);
+        only_propag(meas, stat, cur_surf_pcl_un_);
     }
 }

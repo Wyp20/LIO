@@ -1,0 +1,14 @@
+# Shared Hesai outdoor reference (topics + extrinsics)
+# Source: /home/wyp/Project_loop/FVS/modules/bridge/config/hesai_outdoor.yaml
+# Note: preprocess/lidar_type enum values differ per algorithm; see each configs/hesai/*.yaml
+lid_topic: /lidar_points
+imu_topic: /fvs/imu_raw
+lidar_type_ref: hesai   # not a numeric enum; packages set their own HESAIxt32 value
+scan_line: 128
+scan_rate: 10
+blind: 1
+det_range: 100.0
+extrinsic_T: [0.022846, -0.005619,  0.08427 ]
+extrinsic_R: [-0.012887,  0.693026,  0.720798,
+  -0.999874,  -0.015618,  -0.00286,
+  0.009275,  -0.720744,  0.69314]

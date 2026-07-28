@@ -22,6 +22,7 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <ros/ros.h>
+#include "offline_bag_feed.hpp"
 #include <sensor_msgs/PointCloud2.h>
 #include <so3_math.h>
 #include <tf/transform_broadcaster.h>
@@ -140,9 +141,11 @@ inline void kitti_log(FILE *fp) {
     fflush(fp);
 }
 
+// state is IMU pose in world; apply LiDAR->IMU extrinsic first
 void RGBpointBodyToWorld(PointType const *const pi, PointType *const po) {
-    V3D p_body(pi->x, pi->y, pi->z);
-    V3D p_global(state.rot_end * (p_body) + state.pos_end);
+    V3D p_lidar(pi->x, pi->y, pi->z);
+    V3D p_body = Lidar_rot_to_IMU * p_lidar + Lidar_offset_to_IMU;
+    V3D p_global(state.rot_end * p_body + state.pos_end);
     po->x = p_global(0);
     po->y = p_global(1);
     po->z = p_global(2);
@@ -465,10 +468,23 @@ int main(int argc, char **argv) {
     p_imu->imu_en = imu_en;
     Eigen::Vector3d extT = V3D::Zero();
     Eigen::Matrix3d extR = M3D::Identity();
-    extT << extrinT[0], extrinT[1], extrinT[2];
-    extR << extrinR[0], extrinR[1], extrinR[2], extrinR[3], extrinR[4],
-            extrinR[5], extrinR[6], extrinR[7], extrinR[8];
+    if (extrinT.size() == 3) {
+        extT << extrinT[0], extrinT[1], extrinT[2];
+    } else if (!extrinT.empty()) {
+        ROS_WARN("imu/extrinsic_T size=%zu, expect 3; using zeros", extrinT.size());
+    }
+    if (extrinR.size() == 9) {
+        extR << extrinR[0], extrinR[1], extrinR[2], extrinR[3], extrinR[4],
+                extrinR[5], extrinR[6], extrinR[7], extrinR[8];
+    } else if (!extrinR.empty()) {
+        ROS_WARN("imu/extrinsic_R size=%zu, expect 9; using identity", extrinR.size());
+    }
+    Lidar_offset_to_IMU = extT;
+    Lidar_rot_to_IMU = extR;
     p_imu->set_extrinsic(extT, extR);
+    ROS_INFO("LiDAR-IMU extrinsic T: [%.6f, %.6f, %.6f]",
+             extT(0), extT(1), extT(2));
+    ROS_INFO_STREAM("LiDAR-IMU extrinsic R:\n" << extR);
 
     p_imu->set_gyr_cov_scale(V3D(gyr_cov_scale, gyr_cov_scale, gyr_cov_scale));
     p_imu->set_acc_cov_scale(V3D(acc_cov_scale, acc_cov_scale, acc_cov_scale));
@@ -485,6 +501,11 @@ int main(int argc, char **argv) {
     if (write_kitti_log) {
         fp_kitti = fopen(result_path.c_str(), "w");
     }
+
+    std::string bag_path;
+    lio_offline::BagFeeder bag_feeder;
+    const bool offline_mode = lio_offline::getBagPath(nh, bag_path) &&
+                              bag_feeder.open(bag_path, lid_topic, imu_topic);
 
     signal(SIGINT, SigHandle);
     ros::Rate rate(5000);
@@ -504,10 +525,20 @@ int main(int argc, char **argv) {
         if (flg_exit) {
             break;
         }
-        ros::spinOnce();
+        bool have_measure = false;
+        if (offline_mode) {
+            bool fed = bag_feeder.feedUntilLidar(
+                [](const sensor_msgs::Imu::ConstPtr &msg) { imu_cbk(msg); },
+                [](const sensor_msgs::PointCloud2::ConstPtr &msg) { standard_pcl_cbk(msg); });
+            have_measure = sync_packages(Measures);
+            if (!have_measure && !fed && bag_feeder.done()) break;
+        } else {
+            ros::spinOnce();
+            have_measure = sync_packages(Measures);
+        }
 
         /*** 1.Sync Package ***/
-        if (sync_packages(Measures)) {
+        if (have_measure) {
             //std::cout << "sync once" << std::endl;
             // 时间回溯的保护逻辑
             if (flg_reset) {
@@ -590,7 +621,9 @@ int main(int argc, char **argv) {
                     M3D cov;
                     calcBodyCov(point_this, ranging_cov, angle_cov, cov);
 
-                    point_this += Lidar_offset_to_IMU;
+                    // lidar-frame cov/point -> IMU body frame
+                    cov = Lidar_rot_to_IMU * cov * Lidar_rot_to_IMU.transpose();
+                    point_this = Lidar_rot_to_IMU * point_this + Lidar_offset_to_IMU;
                     M3D point_crossmat;
                     point_crossmat << SKEW_SYM_MATRX(point_this);
                     cov = state.rot_end * cov * state.rot_end.transpose() +
@@ -660,11 +693,12 @@ int main(int argc, char **argv) {
                 } else {
                     calcBodyCov(point_this, ranging_cov, angle_cov, cov);
                 }
+                // lift lidar cov/point to IMU body
+                cov = Lidar_rot_to_IMU * cov * Lidar_rot_to_IMU.transpose();
+                point_this = Lidar_rot_to_IMU * point_this + Lidar_offset_to_IMU;
                 M3D point_crossmat;
                 point_crossmat << SKEW_SYM_MATRX(point_this);
                 crossmat_list.push_back(point_crossmat);
-                M3D rot_var = state.cov.block<3, 3>(0, 0);
-                M3D t_var = state.cov.block<3, 3>(3, 3);
                 body_var.push_back(cov);
             }
 
@@ -729,15 +763,18 @@ int main(int argc, char **argv) {
 
                 /*** 6.2.1 Computation of Jacobian matrix H and Residual r ***/
                 for (int i = 0; i < effct_feat_num; i++) {
-                    V3D laser_p = ptpl_list[i].point;
-                    V3D point_this(laser_p(0), laser_p(1), laser_p(2));
+                    V3D laser_p = ptpl_list[i].point; // lidar frame
+                    V3D point_lidar(laser_p(0), laser_p(1), laser_p(2));
                     M3D cov;
                     if (calib_laser) {
-                        calcBodyCov(point_this, ranging_cov, CALIB_ANGLE_COV, cov);
+                        calcBodyCov(point_lidar, ranging_cov, CALIB_ANGLE_COV, cov);
                     } else {
-                        calcBodyCov(point_this, ranging_cov, angle_cov, cov);
+                        calcBodyCov(point_lidar, ranging_cov, angle_cov, cov);
                     }
 
+                    // lift lidar cov/point to IMU body for Jacobian / noise
+                    cov = Lidar_rot_to_IMU * cov * Lidar_rot_to_IMU.transpose();
+                    V3D point_this = Lidar_rot_to_IMU * point_lidar + Lidar_offset_to_IMU;
                     M3D point_crossmat;
                     point_crossmat << SKEW_SYM_MATRX(point_this);
                     V3D norm_p = ptpl_list[i].omega;
@@ -764,6 +801,7 @@ int main(int argc, char **argv) {
                     double sigma_l = J_abd * ptpl_list[i].plane_cov * J_abd.transpose();
                     R_inv(i) = 1.0 / (sigma_l + J_pw * cov * J_pw.transpose());
                     /*** Calculate the Measuremnt Jacobian matrix H ***/
+                    // A = [p_imu]_x * R^T * n  (p in IMU body frame)
                     V3D n = Omega / Omega_norm;
                     V3D A(point_crossmat * state.rot_end.transpose() * n);
                     Hsub.row(i) << VEC_FROM_ARRAY(A), n[0], n[1], n[2];
@@ -984,7 +1022,7 @@ int main(int argc, char **argv) {
             scanIdx++;
         }
         status = ros::ok();
-        rate.sleep();
+        if (!offline_mode) rate.sleep();
     }
     return 0;
 }

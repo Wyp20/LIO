@@ -1,0 +1,13 @@
+<launch>
+  <arg name="bag_path" default=""/>
+  <arg name="rviz" default="true"/>
+  <arg name="config" default="$(env LIO_WS)/configs/hesai/super_lio.yaml"/>
+  <rosparam command="load" file="$(arg config)" ns="/"/>
+  <param name="bag_path" value="$(arg bag_path)"/>
+  <param name="/super_lio_node/bag_path" value="$(arg bag_path)"/>
+  <node pkg="super_lio" type="super_lio_node" name="super_lio_node" output="screen"/>
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find super_lio)/rviz/lio.rviz"/>
+  </group>
+</launch>

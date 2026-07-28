@@ -6,7 +6,9 @@ set(PCL_DISABLE_GPU_WARNINGS ON)
 
 # glog
 find_package(Glog REQUIRED)
-include_directories(${Glog_INCLUDE_DIRS})
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  ${Glog_INCLUDE_DIRS})
 
 
 find_package(catkin REQUIRED COMPONENTS
@@ -14,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
         nav_msgs
         sensor_msgs
         roscpp
+        rosbag
         rospy
         std_msgs
         pcl_ros

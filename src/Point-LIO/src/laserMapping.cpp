@@ -10,6 +10,7 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 #include "li_initialization.h"
+#include "offline_bag_feed.hpp"
 #include <malloc.h>
 // #include <cv_bridge/cv_bridge.h>
 // #include "matplotlibcpp.h"
@@ -317,9 +318,19 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "laserMapping");
     ros::NodeHandle nh("~");
-    ros::AsyncSpinner spinner(0);
-    spinner.start();
     readParameters(nh);
+
+    lio_offline::BagFeeder bag_feeder;
+    std::string bag_path;
+    ros::NodeHandle nh_global;
+    const bool offline_mode = lio_offline::getBagPath(nh_global, bag_path) &&
+                              bag_feeder.open(bag_path, lid_topic, imu_topic);
+
+    std::unique_ptr<ros::AsyncSpinner> spinner;
+    if (!offline_mode) {
+        spinner.reset(new ros::AsyncSpinner(0));
+        spinner->start();
+    }
     cout<<"lidar_type: "<<lidar_type<<endl;
     ivox_ = std::make_shared<IVoxType>(ivox_options_);
     
@@ -401,7 +412,14 @@ int main(int argc, char** argv)
     while (status)
     {
         if (flg_exit) break;
-        ros::spinOnce();
+        if (offline_mode) {
+            bool fed = bag_feeder.feedUntilLidar(
+                [&](const sensor_msgs::Imu::ConstPtr &msg) { imu_cbk(msg); },
+                [&](const sensor_msgs::PointCloud2::ConstPtr &msg) { standard_pcl_cbk(msg); });
+            if (!fed && bag_feeder.done()) break;
+        } else {
+            ros::spinOnce();
+        }
         if(sync_packages(Measures)) 
         {
             if (flg_reset)

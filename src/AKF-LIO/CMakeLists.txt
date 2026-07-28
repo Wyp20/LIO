@@ -1,3 +1,4 @@
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 cmake_minimum_required(VERSION 3.5)
 project(akf_lio)
 add_definitions(-DDISABLE_LIVOX)

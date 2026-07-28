@@ -1,0 +1,26 @@
+# Unified Hesai outdoor config for RKO-LIO (Python offline / ROS2 params)
+lidar_topic: /lidar_points
+imu_topic: /fvs/imu_raw
+base_frame: base
+odom_topic: /rko_lio/odom
+odom_frame: odom
+invert_odom_tf: false
+publish_local_map: false
+map_topic: /rko_lio/local_map
+publish_deskewed_scan: true
+odom_at_imu_rate: false
+deskew: true
+voxel_size: 1.0
+max_points_per_voxel: 20
+max_range: 100.0
+min_range: 1.0
+max_correspondence_distance: 0.5
+convergence_criterion: 0.00001
+max_num_threads: 2
+initialization_phase: false
+double_downsample: true
+max_expected_jerk: 3.0
+min_beta: 200.0
+# base == IMU; lidar2base = T_imu_lidar
+extrinsic_lidar2base_quat_xyzw_xyz: [-0.2782048952412492, 0.2757397875934543, -0.6560573395616991, 0.6451036738385544, 0.022846, -0.005619, 0.08427]
+extrinsic_imu2base_quat_xyzw_xyz: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]

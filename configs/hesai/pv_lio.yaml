@@ -1,0 +1,50 @@
+# Unified Hesai outdoor config for PV-LIO
+# PointCloud2 already on /lidar_points (no pandar_to_velodyne)
+common:
+    lid_topic:  "/lidar_points"
+    imu_topic:  "/fvs/imu_raw"
+    time_sync_en: false
+
+preprocess:
+    lidar_type: 4                # HESAIxt32 (x,y,z,intensity,timestamp,ring)
+    scan_line: 128
+    scan_rate: 10
+    blind: 1
+    point_filter_num: 1
+
+mapping:
+    down_sample_size: 1
+    max_iteration: 4
+    voxel_size: 2.0
+    max_layer: 1
+    layer_point_size: [ 5, 5, 5, 5, 5 ]
+    plannar_threshold: 0.01
+    max_points_size: 300
+    max_cov_points_size: 300
+    fov_degree:    360
+    det_range:     100.0
+    extrinsic_est_en: false
+    extrinsic_T: [0.022846, -0.005619,  0.08427 ]
+    extrinsic_R: [-0.012887,  0.693026,  0.720798,
+                   -0.999874,  -0.015618,  -0.00286,
+                   0.009275,  -0.720744,  0.69314]
+
+noise_model:
+    ranging_cov: 0.04
+    angle_cov: 0.1
+    acc_cov: 0.2
+    gyr_cov: 0.05
+    b_acc_cov: 0.0043
+    b_gyr_cov: 0.000266
+
+publish:
+    pub_voxel_map: false
+    publish_max_voxel_layer: 1
+    path_en: false
+    scan_publish_en: true
+    dense_publish_en: false
+    scan_bodyframe_pub_en: false
+
+pcd_save:
+    pcd_save_en: false
+    interval: -1

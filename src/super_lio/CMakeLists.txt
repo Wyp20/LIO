@@ -3,7 +3,7 @@ project(super_lio)
 
 
 #DEBUG CONFIGURATION
-# set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_BUILD_TYPE "Release")
 # set(CMAKE_CXX_STANDARD 17)
 # set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -g -pthread -fsanitize=address")
 
@@ -16,6 +16,7 @@ add_definitions(-DROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\")
 find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rosbag
   rospy
   basic
   pcl_ros
@@ -43,6 +44,8 @@ generate_messages(
 
 # Include directories for libraries
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   include

@@ -11,6 +11,8 @@
   <build_depend>basic</build_depend>
   <run_depend>basic</run_depend>
   <build_depend>roscpp</build_depend>
+  <build_depend>rosbag</build_depend>
+  <run_depend>rosbag</run_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
@@ -36,4 +38,4 @@
   <run_depend>python3</run_depend>
   <run_depend>python3-psutil</run_depend>
 
-</package>
+  </package>

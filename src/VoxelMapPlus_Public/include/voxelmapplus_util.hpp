@@ -556,15 +556,18 @@ void UpdateVoxelMap(const std::vector<pointWithCov> &input_points,
     }
 }
 
+// state is IMU pose in world; extrinsic is LiDAR pose in IMU frame.
 void TransformLidar(const StatesGroup &state,
                     const shared_ptr<ImuProcess> &p_imu,
                     const PointCloudXYZI::Ptr &input_cloud,
                     pcl::PointCloud<pcl::PointXYZI>::Ptr &trans_cloud) {
+    (void)p_imu;
     trans_cloud->clear();
     for (size_t i = 0; i < input_cloud->size(); i++) {
         pcl::PointXYZINormal p_c = input_cloud->points[i];
-        V3D p(p_c.x, p_c.y, p_c.z);
-        p = state.rot_end * p + state.pos_end;
+        V3D p_lidar(p_c.x, p_c.y, p_c.z);
+        V3D p_imu_frame = Lidar_rot_to_IMU * p_lidar + Lidar_offset_to_IMU;
+        V3D p = state.rot_end * p_imu_frame + state.pos_end;
         pcl::PointXYZI pi;
         pi.x = static_cast<float>(p(0));
         pi.y = static_cast<float>(p(1));

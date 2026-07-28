@@ -12,7 +12,7 @@ using namespace std;
 typedef pcl::PointXYZINormal PointType;
 typedef pcl::PointCloud<PointType> PointCloudXYZI;
 
-enum LID_TYPE { AVIA = 1, VELO16, L515, OUSTER64, VELO32 }; //{1, 2, 3}
+enum LID_TYPE { AVIA = 1, VELO16, L515, OUSTER64, VELO32, HESAIxt32 }; //{1, 2, 3, 4, 5, 6}
 
 namespace velodyne_ros {
 struct EIGEN_ALIGN16 Point {
@@ -28,6 +28,21 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_ros::Point,
                                       float, intensity,
                                       intensity)(float, time, time)(std::uint16_t,
                                                                     ring, ring))
+
+namespace hesai_ros {
+struct EIGEN_ALIGN16 Point {
+  PCL_ADD_POINT4D;
+  float intensity;
+  double timestamp;
+  uint16_t ring;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+}
+POINT_CLOUD_REGISTER_POINT_STRUCT(hesai_ros::Point,
+                                  (float, x, x)(float, y, y)(float, z, z)(
+                                      float, intensity, intensity)(
+                                      double, timestamp, timestamp)(
+                                      std::uint16_t, ring, ring))
 
 namespace ouster_ros {
 struct EIGEN_ALIGN16 Point {
@@ -87,5 +102,6 @@ class Preprocess
   void l515_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
   void velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
   void velodyne_handler32(const sensor_msgs::PointCloud2::ConstPtr &msg);
+  void hesai_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
   
 };

@@ -1,0 +1,35 @@
+# Hesai / dual-core smoke: keep threads capped, use upstream algorithm defaults.
+# (A minimal yaml left most keys at loader defaults: informed_sampling=false,
+#  dashboard=false — first-frame map build then looks like a hang.)
+max_num_threads: 2
+
+map:
+  pixel_size_m: 0.05
+  voxel_size_m: 0.5
+  normal_tolerance_deg: 3
+  smooth: true
+  weighted: true
+  max_size: 1500000
+  frame: "odom"
+
+preprocess:
+  downsample_resolution_m: 0.1
+  informed_sampling: true
+
+optimization:
+  huber_delta: 0.1
+  img_residual: true
+  img_jacobian: true
+
+imu:
+  window_s: 10
+  t_init: 0.2
+  normalized: -1
+  frame: "body"
+
+debug:
+  publish_all_clouds: false
+  timing: true
+  log: false
+  dashboard: true
+  trajectory_path: ""

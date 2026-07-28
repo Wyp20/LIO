@@ -1,0 +1,13 @@
+<launch>
+  <arg name="bag_path" default=""/>
+  <arg name="rviz" default="true"/>
+  <arg name="config" default="$(env LIO_WS)/configs/hesai/pv_lio.yaml"/>
+  <rosparam command="load" file="$(arg config)"/>
+  <param name="bag_path" value="$(arg bag_path)"/>
+  <param name="/laserMapping/bag_path" value="$(arg bag_path)"/>
+  <node pkg="pv_lio" type="pv_lio_node" name="laserMapping" output="screen"/>
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find pv_lio)/config/rviz_cfg/voxel_mapping.rviz"/>
+  </group>
+</launch>

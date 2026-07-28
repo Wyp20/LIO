@@ -42,6 +42,7 @@
 #include <Python.h>
 #include <so3_math.h>
 #include <ros/ros.h>
+#include "offline_bag_feed.hpp"
 #include <Eigen/Core>
 #include "IMU_Processing.hpp"
 #include <nav_msgs/Odometry.h>
@@ -919,14 +920,30 @@ int main(int argc, char** argv)
     double sum_optimize_time = 0, sum_update_time = 0;
     int scan_index = 0;
 
+
+    std::string bag_path;
+    lio_offline::BagFeeder bag_feeder;
+    const bool offline_mode = lio_offline::getBagPath(nh, bag_path) &&
+                              bag_feeder.open(bag_path, lid_topic, imu_topic);
+
     signal(SIGINT, SigHandle);
     ros::Rate rate(5000);
     bool status = ros::ok();
     while (status)
     {
         if (flg_exit) break;
-        ros::spinOnce();
-        if(sync_packages(Measures))
+        bool have_measure = false;
+        if (offline_mode) {
+            bool fed = bag_feeder.feedUntilLidar(
+                [](const sensor_msgs::Imu::ConstPtr &msg) { imu_cbk(msg); },
+                [](const sensor_msgs::PointCloud2::ConstPtr &msg) { standard_pcl_cbk(msg); });
+            have_measure = sync_packages(Measures);
+            if (!have_measure && !fed && bag_feeder.done()) break;
+        } else {
+            ros::spinOnce();
+            have_measure = sync_packages(Measures);
+        }
+        if(have_measure)
         {
             if (flg_first_scan)
             {
@@ -1093,7 +1110,9 @@ int main(int argc, char** argv)
         }
 
         status = ros::ok();
-        rate.sleep();
+
+
+        if (!offline_mode) rate.sleep();
     }
 
     return 0;

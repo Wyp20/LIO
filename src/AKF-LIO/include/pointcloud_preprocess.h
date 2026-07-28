@@ -29,6 +29,24 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_ros::Point,
                                       (float, time, time)(std::uint16_t, ring, ring))
 // clang-format on
 
+namespace hesai_ros
+{
+    struct EIGEN_ALIGN16 Point
+    {
+        PCL_ADD_POINT4D;
+        float intensity;
+        double timestamp;
+        std::uint16_t ring;
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    };
+}
+
+// clang-format off
+POINT_CLOUD_REGISTER_POINT_STRUCT(hesai_ros::Point,
+                                  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)
+                                      (double, timestamp, timestamp)(std::uint16_t, ring, ring))
+// clang-format on
+
 namespace ouster_ros
 {
     struct EIGEN_ALIGN16 Point
@@ -66,7 +84,8 @@ namespace akf_lio
     {
         AVIA = 1,
         VELO32,
-        OUST64
+        OUST64,
+        HESAIxt32
     };
 
     /**
@@ -104,6 +123,7 @@ namespace akf_lio
 #endif
         void Oust64Handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
         void VelodyneHandler(const sensor_msgs::PointCloud2::ConstPtr &msg);
+        void HesaiHandler(const sensor_msgs::PointCloud2::ConstPtr &msg);
 
         PointCloudType cloud_full_, cloud_out_;
 

@@ -1,0 +1,43 @@
+# Unified Hesai outdoor config for AKF-LIO
+common:
+  lid_topic: "/lidar_points"
+  imu_topic: "/fvs/imu_raw"
+
+preprocess:
+  lidar_type: 4                # HESAIxt32 (x,y,z,intensity,timestamp,ring)
+  scan_line: 128
+  blind: 1
+  time_scale: 1e-3
+
+mapping:
+  acc_cov: 0.1
+  gyr_cov: 0.1
+  b_acc_cov: 0.0001
+  b_gyr_cov: 0.0001
+  lidar_cov: 0.001
+  extrinsic_T: [0.022846, -0.005619,  0.08427 ]
+  extrinsic_R: [-0.012887,  0.693026,  0.720798,
+                 -0.999874,  -0.015618,  -0.00286,
+                 0.009275,  -0.720744,  0.69314]
+
+publish:
+  path_publish_en: false
+  scan_reg_pub_en: true
+  dense_publish_en: false
+  map_publish_en: false
+  gaussian_publish_en: false
+  gaussian_pub_dis: 10
+  gaussian_pub_min_cnt: 5
+
+adap_voxel_size_en: true
+target_point_size: 2500
+point_filter_num: 1
+max_iteration: 3
+init_uncertainty: 0.01
+t_ratio_b: 1
+akf_update_alpha: 1
+ivox_grid_resolution: 0.5
+ivox_nearby_type: 26
+t_mal: 7.82
+t_stop_pseudo_merge: 1
+time_to_delete_local_map: 10000

@@ -95,6 +95,11 @@ namespace akf_lio
             preprocess_->SetLidarType(LidarType::OUST64);
             LOG(INFO) << "Using OUST 64 Lidar";
         }
+        else if (lidar_type == 4)
+        {
+            preprocess_->SetLidarType(LidarType::HESAIxt32);
+            LOG(INFO) << "Using Hesai Lidar";
+        }
         else
         {
             LOG(WARNING) << "unknown lidar_type";

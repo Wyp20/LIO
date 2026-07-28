@@ -1,0 +1,31 @@
+<launch>
+  <arg name="bag_path" default=""/>
+  <arg name="rviz" default="true"/>
+  <arg name="pointcloud_topic" default="/lidar_points"/>
+  <arg name="imu_topic" default="/fvs/imu_raw"/>
+  <arg name="dlio_yaml" default="$(env LIO_WS)/configs/hesai/dlio.yaml"/>
+  <arg name="params_yaml" default="$(env LIO_WS)/configs/hesai/dlio_params.yaml"/>
+  <param name="bag_path" value="$(arg bag_path)"/>
+  <param name="/robot/dlio_odom/bag_path" value="$(arg bag_path)"/>
+  <param name="lid_topic" value="$(arg pointcloud_topic)"/>
+  <param name="imu_topic" value="$(arg imu_topic)"/>
+  <node ns="robot" name="dlio_odom" pkg="direct_lidar_inertial_odometry" type="dlio_odom_node" output="screen" clear_params="true">
+    <param name="lid_topic" value="$(arg pointcloud_topic)"/>
+    <param name="imu_topic" value="$(arg imu_topic)"/>
+    <param name="bag_path" value="$(arg bag_path)"/>
+    <rosparam file="$(arg dlio_yaml)" command="load"/>
+    <rosparam file="$(arg params_yaml)" command="load"/>
+    <remap from="~pointcloud" to="$(arg pointcloud_topic)"/>
+    <remap from="~imu" to="$(arg imu_topic)"/>
+    <remap from="~odom" to="dlio/odom_node/odom"/>
+    <remap from="~pose" to="dlio/odom_node/pose"/>
+    <remap from="~path" to="dlio/odom_node/path"/>
+    <remap from="~kf_pose" to="dlio/odom_node/keyframes"/>
+    <remap from="~kf_cloud" to="dlio/odom_node/pointcloud/keyframe"/>
+    <remap from="~deskewed" to="dlio/odom_node/pointcloud/deskewed"/>
+  </node>
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find direct_lidar_inertial_odometry)/launch/dlio.rviz"/>
+  </group>
+</launch>

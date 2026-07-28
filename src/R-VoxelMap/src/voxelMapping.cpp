@@ -22,6 +22,7 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <ros/ros.h>
+#include "offline_bag_feed.hpp"
 #include <sensor_msgs/PointCloud2.h>
 #include <so3_math.h>
 #include <tf/transform_broadcaster.h>
@@ -168,11 +169,11 @@ const bool var_contrast(pointWithCov &x, pointWithCov &y) {
 };
 
 // project the lidar scan to world frame
-// use state (imu pose to world frame) to transform
+// state is IMU pose in world; apply LiDAR->IMU extrinsic first
 void pointBodyToWorld(PointType const *const pi, PointType *const po) {
-  V3D p_body(pi->x, pi->y, pi->z);
-  p_body = p_body + Lidar_offset_to_IMU;
-  V3D p_global(state.rot_end * (p_body) + state.pos_end);
+  V3D p_lidar(pi->x, pi->y, pi->z);
+  V3D p_body = Lidar_rot_to_IMU * p_lidar + Lidar_offset_to_IMU;
+  V3D p_global(state.rot_end * p_body + state.pos_end);
   po->x = p_global(0);
   po->y = p_global(1);
   po->z = p_global(2);
@@ -181,17 +182,18 @@ void pointBodyToWorld(PointType const *const pi, PointType *const po) {
 
 template <typename T>
 void pointBodyToWorld(const Matrix<T, 3, 1> &pi, Matrix<T, 3, 1> &po) {
-  V3D p_body(pi[0], pi[1], pi[2]);
-  p_body = p_body + Lidar_offset_to_IMU;
-  V3D p_global(state.rot_end * (p_body) + state.pos_end);
+  V3D p_lidar(pi[0], pi[1], pi[2]);
+  V3D p_body = Lidar_rot_to_IMU * p_lidar + Lidar_offset_to_IMU;
+  V3D p_global(state.rot_end * p_body + state.pos_end);
   po[0] = p_global(0);
   po[1] = p_global(1);
   po[2] = p_global(2);
 }
 
 void RGBpointBodyToWorld(PointType const *const pi, PointType *const po) {
-  V3D p_body(pi->x, pi->y, pi->z);
-  V3D p_global(state.rot_end * (p_body) + state.pos_end);
+  V3D p_lidar(pi->x, pi->y, pi->z);
+  V3D p_body = Lidar_rot_to_IMU * p_lidar + Lidar_offset_to_IMU;
+  V3D p_global(state.rot_end * p_body + state.pos_end);
   po->x = p_global(0);
   po->y = p_global(1);
   po->z = p_global(2);
@@ -790,12 +792,25 @@ int main(int argc, char **argv) {
 
   shared_ptr<ImuProcess> p_imu(new ImuProcess());
   p_imu->imu_en = imu_en;
-  Eigen::Vector3d extT;
-  Eigen::Matrix3d extR;
-  extT << extrinT[0], extrinT[1], extrinT[2];
-  extR << extrinR[0], extrinR[1], extrinR[2], extrinR[3], extrinR[4],
-      extrinR[5], extrinR[6], extrinR[7], extrinR[8];
+  Eigen::Vector3d extT = Eigen::Vector3d::Zero();
+  Eigen::Matrix3d extR = Eigen::Matrix3d::Identity();
+  if (extrinT.size() == 3) {
+    extT << extrinT[0], extrinT[1], extrinT[2];
+  } else if (!extrinT.empty()) {
+    ROS_WARN("imu/extrinsic_T size=%zu, expect 3; using zeros", extrinT.size());
+  }
+  if (extrinR.size() == 9) {
+    extR << extrinR[0], extrinR[1], extrinR[2], extrinR[3], extrinR[4],
+        extrinR[5], extrinR[6], extrinR[7], extrinR[8];
+  } else if (!extrinR.empty()) {
+    ROS_WARN("imu/extrinsic_R size=%zu, expect 9; using identity", extrinR.size());
+  }
+  Lidar_offset_to_IMU = extT;
+  Lidar_rot_to_IMU = extR;
   p_imu->set_extrinsic(extT, extR);
+  ROS_INFO("LiDAR-IMU extrinsic T: [%.6f, %.6f, %.6f]",
+           extT(0), extT(1), extT(2));
+  ROS_INFO_STREAM("LiDAR-IMU extrinsic R:\n" << extR);
 
   // Current version do not support imu.
   if (imu_en) {
@@ -813,6 +828,11 @@ int main(int argc, char **argv) {
   H_T_H.setZero();
   I_STATE.setIdentity();
 
+  std::string bag_path;
+  lio_offline::BagFeeder bag_feeder;
+  const bool offline_mode = lio_offline::getBagPath(nh, bag_path) &&
+                            bag_feeder.open(bag_path, lid_topic, imu_topic);
+
   signal(SIGINT, SigHandle);
   ros::Rate rate(5000);
   bool status = ros::ok();
@@ -822,10 +842,31 @@ int main(int argc, char **argv) {
   last_rot << 1, 0, 0, 0, 1, 0, 0, 0, 1;  // dont use
 
   while (status) {
-    if (flg_exit)
-      break;
-    ros::spinOnce();
-    if (sync_packages(Measures)) {
+    if (flg_exit) break;
+
+    bool have_measure = false;
+
+    if (offline_mode) {
+
+        bool fed = bag_feeder.feedUntilLidar(
+
+            [](const sensor_msgs::Imu::ConstPtr &msg) { imu_cbk(msg); },
+
+            [](const sensor_msgs::PointCloud2::ConstPtr &msg) { standard_pcl_cbk(msg); });
+
+        have_measure = sync_packages(Measures);
+
+        if (!have_measure && !fed && bag_feeder.done()) break;
+
+    } else {
+
+        ros::spinOnce();
+
+        have_measure = sync_packages(Measures);
+
+    }
+
+    if(have_measure) {
       // std::cout << "sync once" << std::endl;
       double t_all_start = omp_get_wtime();
       if (flg_reset) {
@@ -908,17 +949,12 @@ int main(int argc, char **argv) {
           M3D cov;
           calcBodyCov(point_this, ranging_cov, angle_cov, cov);
 
-          point_this += Lidar_offset_to_IMU;
+          // lidar-frame cov/point -> IMU body frame
+          cov = Lidar_rot_to_IMU * cov * Lidar_rot_to_IMU.transpose();
+          point_this = Lidar_rot_to_IMU * point_this + Lidar_offset_to_IMU;
           M3D point_crossmat;
           point_crossmat << SKEW_SYM_MATRX(point_this);
-          // old version
-          // cov = state.rot_end * cov * state.rot_end.transpose() +
-          //       (-point_crossmat) * state.cov.block<3, 3>(0, 0) *
-          //           (-point_crossmat).transpose() +
-          //       state.cov.block<3, 3>(3, 3);
-          // 照着论文里公式改的
-          //* calculate cov of point in world frame 
-          // * change
+          // * calculate cov of point in world frame
           cov = state.rot_end * cov * state.rot_end.transpose() +
                 state.rot_end * (-point_crossmat) * state.cov.block<3, 3>(0, 0) *
                     (-point_crossmat).transpose() * state.rot_end.transpose() +
@@ -994,8 +1030,10 @@ int main(int argc, char **argv) {
           point_this[2] = 0.001;
         }
         M3D cov;
-        //* calculate cov of point in lidar frame
+        // calculate cov of point in lidar frame, then lift to IMU body
         calcBodyCov(point_this, ranging_cov, angle_cov, cov);
+        cov = Lidar_rot_to_IMU * cov * Lidar_rot_to_IMU.transpose();
+        point_this = Lidar_rot_to_IMU * point_this + Lidar_offset_to_IMU;
         M3D point_crossmat;
         point_crossmat << SKEW_SYM_MATRX(point_this);
         crossmat_list.push_back(point_crossmat);
@@ -1101,30 +1139,33 @@ int main(int argc, char **argv) {
 
         for (int i = 0; i < effct_feat_num; i++) {
           const PointType &laser_p = laserCloudOri->points[i];
-          V3D point_this(laser_p.x, laser_p.y, laser_p.z); // lidar 系下点
+          V3D point_lidar(laser_p.x, laser_p.y, laser_p.z); // lidar frame
           M3D cov;
           if (calib_laser) {
-            calcBodyCov(point_this, ranging_cov, CALIB_ANGLE_COV, cov);
+            calcBodyCov(point_lidar, ranging_cov, CALIB_ANGLE_COV, cov);
           } else {
             // calculate cov of point in lidar frame
-            if(point_this[2] == 0) {
-              point_this[2] = 0.001;
-              calcBodyCov(point_this, ranging_cov, angle_cov, cov);
-              point_this[2] = 0;
+            if(point_lidar[2] == 0) {
+              point_lidar[2] = 0.001;
+              calcBodyCov(point_lidar, ranging_cov, angle_cov, cov);
+              point_lidar[2] = 0;
             }
             else {
-              calcBodyCov(point_this, ranging_cov, angle_cov, cov);
+              calcBodyCov(point_lidar, ranging_cov, angle_cov, cov);
             }
           }
 
+          // lift lidar cov/point to IMU body, then to world for observation noise
+          cov = Lidar_rot_to_IMU * cov * Lidar_rot_to_IMU.transpose();
+          V3D point_this = Lidar_rot_to_IMU * point_lidar + Lidar_offset_to_IMU;
           cov = state.rot_end * cov * state.rot_end.transpose();
           M3D point_crossmat;
           point_crossmat << SKEW_SYM_MATRX(point_this);
           const PointType &norm_p = corr_normvect->points[i];
           // current point matching plane normal vector
           V3D norm_vec(norm_p.x, norm_p.y, norm_p.z);
-          // point in world frame         
-          V3D point_world = state.rot_end * point_this + state.pos_end; 
+          // point in world frame
+          V3D point_world = state.rot_end * point_this + state.pos_end;
           // /*** get the normal vector of closest surface/corner ***/
           Eigen::Matrix<double, 1, 6> J_nq;
           J_nq.block<1, 3>(0, 0) = point_world - ptpl_list[i].center;
@@ -1138,6 +1179,7 @@ int main(int argc, char **argv) {
           laserCloudOri->points[i].curvature = sqrt(sigma_l + norm_vec.transpose() * cov * norm_vec);
 
           /*** calculate the Measuremnt Jacobian matrix H ***/
+          // A = [p_imu]_x * R^T * n  (p in IMU body frame)
           V3D A(point_crossmat * state.rot_end.transpose() * norm_vec);
           Hsub.row(i) << VEC_FROM_ARRAY(A), norm_p.x, norm_p.y, norm_p.z;
           Hsub_T_R_inv.col(i) << A[0] * R_inv(i), A[1] * R_inv(i),
@@ -1391,7 +1433,8 @@ int main(int argc, char **argv) {
       scanIdx++;
     }
     status = ros::ok();
-    rate.sleep();
+
+    if (!offline_mode) rate.sleep();
   }
 
   // my log

@@ -1,0 +1,54 @@
+# Unified Hesai outdoor config for Point-LIO
+common:
+    lid_topic: "/lidar_points"
+    imu_topic: "/fvs/imu_raw"
+    con_frame: false
+    con_frame_num: 1
+    cut_frame: false
+    cut_frame_time_interval: 0.1
+    time_diff_lidar_to_imu: 0.0
+
+preprocess:
+    lidar_type: 4                # HESAIxt32
+    scan_line: 128
+    timestamp_unit: 0
+    blind: 1.0
+
+mapping:
+    imu_en: true
+    extrinsic_est_en: false
+    imu_time_inte: 0.005
+    lidar_time_inte: 0.1
+    satu_acc: 30.0
+    satu_gyro: 35
+    acc_norm: 9.81
+    lidar_meas_cov: 0.01
+    acc_cov_output: 500
+    gyr_cov_output: 1000
+    b_acc_cov: 0.0001
+    b_gyr_cov: 0.0001
+    imu_meas_acc_cov: 0.1
+    imu_meas_omg_cov: 0.1
+    gyr_cov_input: 0.01
+    acc_cov_input: 0.1
+    plane_thr: 0.1
+    match_s: 81
+    ivox_grid_resolution: 2.0
+    gravity: [0.0, 0.0, -9.810]
+    gravity_init: [0.0, 0.0, -9.810]
+    extrinsic_T: [0.022846, -0.005619,  0.08427 ]
+    extrinsic_R: [-0.012887,  0.693026,  0.720798,
+                   -0.999874,  -0.015618,  -0.00286,
+                   0.009275,  -0.720744,  0.69314]
+
+odometry:
+    publish_odometry_without_downsample: false
+
+publish:
+    path_en: false
+    scan_publish_en: true
+    scan_bodyframe_pub_en: false
+
+pcd_save:
+    pcd_save_en: false
+    interval: -1

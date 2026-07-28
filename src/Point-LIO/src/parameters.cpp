@@ -118,7 +118,12 @@ void readParameters(ros::NodeHandle &nh)
     // LOG(WARNING) << "unknown ivox_nearby_type, use NEARBY18";
     ivox_options_.nearby_type_ = IVoxType::NearbyType::NEARBY18;
   }
+  if (gravity.size() >= 3) {
     p_imu->gravity_ << VEC_FROM_ARRAY(gravity);
+  } else {
+    ROS_WARN("mapping/gravity missing or incomplete; defaulting to [0,0,-9.81]");
+    p_imu->gravity_ << 0.0, 0.0, -9.81;
+  }
 }
 
 Eigen::Matrix<double, 3, 1> SO3ToEuler(const SO3 &rot) 

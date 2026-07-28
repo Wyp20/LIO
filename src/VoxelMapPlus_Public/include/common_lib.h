@@ -44,6 +44,7 @@ M3F Eye3f(M3F::Identity());
 V3D Zero3d(0, 0, 0);
 V3F Zero3f(0, 0, 0);
 Vector3d Lidar_offset_to_IMU(0, 0, 0);
+M3D Lidar_rot_to_IMU(M3D::Identity());
 
 struct MeasureGroup // Lidar data and imu dates for the curent process
 {

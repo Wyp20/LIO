@@ -3,7 +3,9 @@ project(fast_lio)
 # Benchmark: no livox_ros_driver; only PointCloud2 path compiled
 add_definitions(-DDISABLE_LIVOX)
 
-SET(CMAKE_BUILD_TYPE "Debug")
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
 
 ADD_COMPILE_OPTIONS(-std=c++14 )
 ADD_COMPILE_OPTIONS(-std=c++14 )
@@ -55,6 +57,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   message_generation
   eigen_conversions
+  rosbag
 )
 
 find_package(Eigen3 REQUIRED)
@@ -63,6 +66,8 @@ find_package(PCL 1.8 REQUIRED)
 message(Eigen: ${EIGEN3_INCLUDE_DIR})
 
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  
 	${catkin_INCLUDE_DIRS} 
   ${EIGEN3_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}

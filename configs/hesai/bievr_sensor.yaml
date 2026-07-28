@@ -1,0 +1,14 @@
+# Unified Hesai outdoor sensor config for BIEVR-LIO
+topics:
+  pointcloud: "/lidar_points"
+  imu: "/fvs/imu_raw"
+
+calibration: # T_IMU_LIDAR (LiDAR -> IMU)
+  translation: [0.022846, -0.005619,  0.08427 ]
+  rotation: [-0.012887,  0.693026,  0.720798,
+                    -0.999874,  -0.015618,  -0.00286,
+                    0.009275,  -0.720744,  0.69314]
+
+lidar:
+  min_range_m: 1.0
+  max_range_m: 100

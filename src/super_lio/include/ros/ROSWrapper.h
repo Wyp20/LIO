@@ -89,13 +89,12 @@ public:
 
   void set_initial_data(BASIC::SE3& init_pose, bool& flg_get_init_guess, bool flg_finish_init = false);
 
-
-private:
+  // Public for offline bag replay
   void imuHandler(const sensor_msgs::Imu::ConstPtr&);
   void livoxHandler(const livox_ros_driver::CustomMsg::ConstPtr&);
   void stdMsgHandler(const sensor_msgs::PointCloud2::ConstPtr&);
 
-
+private:
   ros::NodeHandle nh_;
   ros::CallbackQueue self_queue_;
   ros::Subscriber subLidar_;

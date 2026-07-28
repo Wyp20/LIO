@@ -6,6 +6,9 @@ logs/
 .catkin_tools/
 .catkin_workspace
 
+# benchmark outputs
+results/
+
 # editors / OS
 .vscode/
 .idea/

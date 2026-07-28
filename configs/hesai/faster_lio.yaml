@@ -1,0 +1,50 @@
+# Unified Hesai outdoor config for Faster-LIO
+common:
+  lid_topic: "/lidar_points"
+  imu_topic: "/fvs/imu_raw"
+  time_sync_en: false
+
+preprocess:
+  lidar_type: 4                # Hesai (x,y,z,intensity,timestamp,ring)
+  scan_line: 128
+  blind: 1
+  time_scale: 1e-3
+
+mapping:
+  acc_cov: 0.1
+  gyr_cov: 0.1
+  b_acc_cov: 0.0001
+  b_gyr_cov: 0.0001
+  fov_degree: 360
+  det_range: 100.0
+  extrinsic_est_en: false
+  extrinsic_T: [0.022846, -0.005619,  0.08427 ]
+  extrinsic_R: [-0.012887,  0.693026,  0.720798,
+                 -0.999874,  -0.015618,  -0.00286,
+                 0.009275,  -0.720744,  0.69314]
+
+publish:
+  path_publish_en: false
+  scan_publish_en: true
+  scan_effect_pub_en: false
+  dense_publish_en: false
+  scan_bodyframe_pub_en: false
+
+path_save_en: false
+
+pcd_save:
+  pcd_save_en: false
+  interval: -1
+
+feature_extract_enable: false
+# 128-line Hesai is dense; 1 keeps nearly all points and makes Undistort ~150ms+.
+# Official hesai.yaml uses 6. Raise further (8~12) if still lagging behind 10Hz.
+point_filter_num: 6
+max_iteration: 3
+filter_size_surf: 0.5
+filter_size_map: 0.5
+cube_side_length: 1000
+
+ivox_grid_resolution: 0.5
+ivox_nearby_type: 18
+esti_plane_threshold: 0.1

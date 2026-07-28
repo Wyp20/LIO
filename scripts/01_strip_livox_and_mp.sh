@@ -93,7 +93,7 @@ fi
 for f in \
   "$SRC/direct_lidar_inertial_odometry/CMakeLists.txt" \
   "$SRC/super_lio/CMakeLists.txt" \
-  "$SRC/BIEVR/CMakeLists.txt"
+  "$SRC/BIEVR-LIO/BIEVR/CMakeLists.txt"
 do
   [[ -f "$f" ]] || continue
   if ! grep -q 'OMP_NUM_THREADS' "$f"; then

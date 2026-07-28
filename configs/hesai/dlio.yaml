@@ -1,0 +1,29 @@
+# Unified Hesai outdoor config for DLIO (dlio.yaml part)
+dlio:
+  version: 1.1.1
+  adaptive: true
+  pointcloud:
+    deskew: true
+    voxelize: true
+  imu:
+    calibration: true
+    intrinsics:
+      accel:
+        bias: [ 0.0, 0.0, 0.0 ]
+        sm:   [ 1.,  0.,  0.,
+                0.,  1.,  0.,
+                0.,  0.,  1. ]
+      gyro:
+        bias: [ 0.0, 0.0, 0.0 ]
+  extrinsics:
+    # base_link == IMU; baselink2lidar = T_imu_lidar from hesai_outdoor
+    baselink2imu:
+      t: [ 0.,  0.,  0. ]
+      R: [ 1.,  0.,  0.,
+           0.,  1.,  0.,
+           0.,  0.,  1. ]
+    baselink2lidar:
+      t: [ 0.022846, -0.005619, 0.08427 ]
+      R: [ -0.012887, 0.693026, 0.720798,
+           -0.999874, -0.015618, -0.00286,
+           0.009275, -0.720744, 0.69314 ]

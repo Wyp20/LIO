@@ -17,7 +17,9 @@ add_compile_options(-std=c++17)
 set(CMAKE_BUILD_TYPE "Release")
 
 find_package( PCL REQUIRED )
-include_directories(${PCL_INCLUDE_DIRS})
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  ${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 link_directories(${PCL_LIBRARY_DIRS})
 
@@ -39,6 +41,7 @@ find_package(Threads REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  rosbag
   std_msgs
   sensor_msgs
   geometry_msgs

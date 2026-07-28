@@ -2,9 +2,8 @@ cmake_minimum_required(VERSION 2.8.3)
 project(pv_lio)
 add_definitions(-DDISABLE_LIVOX)
 
-#SET(CMAKE_BUILD_TYPE "Debug")
-#set(CMAKE_CXX_FLAGS "-std=c++11")
 set(CMAKE_BUILD_TYPE "Release")
+#set(CMAKE_CXX_FLAGS "-std=c++11")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -pthread")
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g -pthread")
 
@@ -62,6 +61,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   sensor_msgs
   roscpp
+  rosbag
   rospy
   std_msgs
   pcl_ros
@@ -77,6 +77,8 @@ find_package(PCL 1.8 REQUIRED)
 message(Eigen: ${EIGEN3_INCLUDE_DIR})
 
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}

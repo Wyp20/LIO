@@ -21,15 +21,15 @@ public:
 
   void start();
 
+  void callbackPointCloud(const sensor_msgs::PointCloud2ConstPtr& pc);
+  void callbackImu(const sensor_msgs::Imu::ConstPtr& imu);
+
 private:
 
   struct State;
   struct ImuMeas;
 
   void getParams();
-
-  void callbackPointCloud(const sensor_msgs::PointCloud2ConstPtr& pc);
-  void callbackImu(const sensor_msgs::Imu::ConstPtr& imu);
 
   void publishPose(const ros::TimerEvent& e);
 

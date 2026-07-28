@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include "lio/super_lio.h"
 #include "ros/ROSWrapper.h"
+#include "offline_bag_feed.hpp"
 
 
 using namespace LI2Sup;
@@ -22,11 +23,31 @@ int main(int argc, char** argv){
   lio->setROSWrapper(data_wrapper);
   lio->init();
 
-  ros::Rate rate(500);  // 500 Hz
+  std::string bag_path;
+  lio_offline::BagFeeder bag_feeder;
+  std::string lid = g_lidar_topic, imu = g_imu_topic;
+  nh.param<std::string>("/lio/ros/lidar_topic", lid, lid);
+  nh.param<std::string>("/lio/ros/imu_topic", imu, imu);
+
+  const bool offline_mode = lio_offline::getBagPath(nh, bag_path) &&
+                            bag_feeder.open(bag_path, lid, imu);
+
+  ros::Rate rate(500);
   while (ros::ok() && g_flag_run) {
-    data_wrapper->spinOnce();
-    lio->process();
-    rate.sleep();
+    if (offline_mode) {
+      bool fed = bag_feeder.feedUntilLidar(
+          [&](const sensor_msgs::Imu::ConstPtr& msg) { data_wrapper->imuHandler(msg); },
+          [&](const sensor_msgs::PointCloud2::ConstPtr& msg) { data_wrapper->stdMsgHandler(msg); });
+      lio->process();
+      if (!fed && bag_feeder.done()) {
+        for (int i = 0; i < 10; ++i) lio->process();
+        break;
+      }
+    } else {
+      data_wrapper->spinOnce();
+      lio->process();
+      rate.sleep();
+    }
   }
 
   lio->saveMap();

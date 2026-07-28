@@ -3,7 +3,6 @@ project(voxel_map_plus)
 add_definitions(-DDISABLE_LIVOX)
 
 SET(CMAKE_BUILD_TYPE "Release")
-#SET(CMAKE_BUILD_TYPE "Debug")
 #SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 #SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
@@ -47,6 +46,7 @@ find_package(catkin REQUIRED COMPONENTS
         nav_msgs
         sensor_msgs
         roscpp
+  rosbag
         cv_bridge
         rospy
         std_msgs
@@ -66,6 +66,8 @@ find_package(OpenCV)
 message(Eigen: ${EIGEN3_INCLUDE_DIR})
 
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  
         ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIR}
         ${PCL_INCLUDE_DIRS}

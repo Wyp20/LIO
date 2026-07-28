@@ -1116,16 +1116,17 @@ private:
   }
 };
 
-// p_imu is not used here, it can be removed directly
+// Transform lidar-frame points to world using IMU pose and LiDAR-IMU extrinsic.
+// state.{rot,pos}_end is IMU pose in world; extrinsic is LiDAR pose in IMU frame.
 void transformLidar(const StatesGroup &state,
                     const PointCloudXYZI::Ptr &input_cloud,
                     pcl::PointCloud<pcl::PointXYZI>::Ptr &trans_cloud) {
   trans_cloud->clear();
   for (size_t i = 0; i < input_cloud->size(); i++) {
     pcl::PointXYZINormal p_c = input_cloud->points[i];
-    Eigen::Vector3d p(p_c.x, p_c.y, p_c.z);
-    // p = p_imu->Lid_rot_to_IMU * p + p_imu->Lid_offset_to_IMU;
-    p = state.rot_end * p + state.pos_end;
+    Eigen::Vector3d p_lidar(p_c.x, p_c.y, p_c.z);
+    Eigen::Vector3d p_imu = Lidar_rot_to_IMU * p_lidar + Lidar_offset_to_IMU;
+    Eigen::Vector3d p = state.rot_end * p_imu + state.pos_end;
     pcl::PointXYZI pi;
     pi.x = p(0);
     pi.y = p(1);

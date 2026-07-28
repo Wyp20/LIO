@@ -1,0 +1,37 @@
+# Unified Hesai outdoor config for FAST-LIO2
+# Source: hesai_outdoor.yaml (/lidar_points + /fvs/imu_raw)
+common:
+    lid_topic:  "/lidar_points"
+    imu_topic:  "/fvs/imu_raw"
+    time_sync_en: false
+    time_offset_lidar_to_imu: 0.0
+
+preprocess:
+    lidar_type: 5                # HESAIxt32 (x,y,z,intensity,timestamp,ring)
+    scan_line: 128
+    scan_rate: 10
+    timestamp_unit: 0            # absolute timestamp field is in seconds
+    blind: 1
+
+mapping:
+    acc_cov: 0.1
+    gyr_cov: 0.1
+    b_acc_cov: 0.0001
+    b_gyr_cov: 0.0001
+    fov_degree: 360
+    det_range: 100.0
+    extrinsic_est_en: false
+    extrinsic_T: [0.022846, -0.005619,  0.08427 ]
+    extrinsic_R: [-0.012887,  0.693026,  0.720798,
+                   -0.999874,  -0.015618,  -0.00286,
+                   0.009275,  -0.720744,  0.69314]
+
+publish:
+    path_en: false
+    scan_publish_en: true
+    dense_publish_en: false
+    scan_bodyframe_pub_en: false
+
+pcd_save:
+    pcd_save_en: false
+    interval: -1

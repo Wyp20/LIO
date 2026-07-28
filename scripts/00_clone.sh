@@ -64,27 +64,17 @@ else
   echo "[skip] super_lio already present"
 fi
 
-# BIEVR-LIO: flatten packages
-if [[ ! -d bievr_lio && ! -d BIEVR ]]; then
-  tmp="$ROOT/third_party/BIEVR-LIO-tmp"
-  rm -rf "$tmp"
-  git clone --depth 1 https://github.com/ethz-asl/BIEVR-LIO.git "$tmp"
-  # Prefer interfaces/ros1 layout
-  if [[ -d "$tmp/BIEVR" ]]; then
-    cp -a "$tmp/BIEVR" "$SRC/BIEVR"
-  fi
-  if [[ -d "$tmp/interfaces/ros1" ]]; then
-    cp -a "$tmp/interfaces/ros1" "$SRC/bievr_lio_ros"
-  fi
-  if [[ -d "$tmp/interfaces/ros_common" ]]; then
-    cp -a "$tmp/interfaces/ros_common" "$SRC/bievr_ros_common"
-  fi
-  # Keep configs for convenience
+# BIEVR-LIO: keep upstream layout (BIEVR/ + interfaces/{ros1,ros2,ros_common})
+if [[ ! -d BIEVR-LIO ]]; then
+  git clone --depth 1 https://github.com/ethz-asl/BIEVR-LIO.git "$SRC/BIEVR-LIO"
+  # ROS1 workspace: skip ament ROS2 package
+  touch "$SRC/BIEVR-LIO/interfaces/ros2/CATKIN_IGNORE"
+  # Convenience copy of upstream configs (Hesai overrides live in configs/hesai/)
   mkdir -p "$ROOT/configs/bievr_upstream"
-  [[ -d "$tmp/config" ]] && cp -a "$tmp/config/." "$ROOT/configs/bievr_upstream/"
-  echo "[ok] BIEVR-LIO flattened"
+  [[ -d "$SRC/BIEVR-LIO/config" ]] && cp -a "$SRC/BIEVR-LIO/config/." "$ROOT/configs/bievr_upstream/"
+  echo "[ok] BIEVR-LIO (original layout)"
 else
-  echo "[skip] BIEVR already present"
+  echo "[skip] BIEVR-LIO already present"
 fi
 
 echo "=== Clone done ==="

@@ -1,0 +1,12 @@
+<launch>
+  <arg name="rosbag"/>
+  <arg name="rviz" default="true"/>
+  <arg name="sensor_config" default="$(env LIO_WS)/configs/hesai/bievr_sensor.yaml"/>
+  <arg name="params" default="$(env LIO_WS)/configs/hesai/bievr_params.yaml"/>
+  <node pkg="bievr_lio_ros" type="process_bag" name="bievr_lio_bag_node" output="screen" required="true"
+        args="$(eval '--sensor_config_file ' + arg('sensor_config') + ' --params_file ' + arg('params') + ' --bag ' + arg('rosbag'))"/>
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find bievr_lio_ros)/rviz/config.rviz"/>
+  </group>
+</launch>

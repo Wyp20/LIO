@@ -49,7 +49,7 @@ void LoadParamFromRos(ros::NodeHandle& nh){
   V3 __t = V3(extrinsic_lidar_imu[0], 
               extrinsic_lidar_imu[1], 
               extrinsic_lidar_imu[2]);
-  M3 __R = M3(extrinsic_lidar_imu.data() + 3);
+  M3 __R = M3(extrinsic_lidar_imu.data() + 3).transpose();
   g_lidar_imu = SE3(__R, __t);  // lidar in imu frame·
   nh.getParam("/lio/extrinsic/odom_robo", extrinsic_odom_robo);     // 3 + 3 x,y,z,r,p,y
   __t = V3(extrinsic_odom_robo[0], 

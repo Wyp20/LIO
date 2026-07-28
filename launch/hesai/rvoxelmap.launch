@@ -1,0 +1,21 @@
+<launch>
+  <arg name="bag_path" default=""/>
+  <arg name="rviz" default="true"/>
+  <arg name="config" default="$(env LIO_WS)/configs/hesai/rvoxelmap.yaml"/>
+  <arg name="save_tum_flag" default="false"/>
+  <arg name="tum_file_path" default="/tmp/rvoxelmap_tum.txt"/>
+  <arg name="ns" default="rvoxelmap"/>
+
+  <group ns="$(arg ns)">
+    <rosparam command="load" file="$(arg config)"/>
+    <param name="save_tum_flag" value="$(arg save_tum_flag)"/>
+    <param name="tum_file_path" value="$(arg tum_file_path)"/>
+    <param name="bag_path" value="$(arg bag_path)"/>
+    <node pkg="rvoxelmap" type="voxel_mapping_odom" name="voxelMapping" output="screen"/>
+  </group>
+
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find rvoxelmap)/rviz_cfg/voxel_mapping.rviz"/>
+  </group>
+</launch>
