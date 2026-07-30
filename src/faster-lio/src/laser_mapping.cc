@@ -357,9 +357,9 @@ void LaserMapping::Run() {
     LOG(INFO) << "[ mapping ]: In num: " << scan_undistort_->points.size() << " downsamp " << cur_pts
               << " Map grid num: " << ivox_->NumValidGrids() << " effect num : " << effect_feat_num_;
 
-    // publish or save map pcd
+    // publish or save map pcd (also publish ROS topics in offline eval mode)
     if (run_in_offline_) {
-        if (pcd_save_en_) {
+        if (scan_pub_en_ || pcd_save_en_) {
             PublishFrameWorld();
         }
         if (path_save_en_) {
@@ -743,7 +743,7 @@ void LaserMapping::PublishOdometry(const ros::Publisher &pub_odom_aft_mapped) {
 }
 
 void LaserMapping::PublishFrameWorld() {
-    if (!(run_in_offline_ == false && scan_pub_en_) && !pcd_save_en_) {
+    if (!scan_pub_en_ && !pcd_save_en_) {
         return;
     }
 
@@ -759,7 +759,7 @@ void LaserMapping::PublishFrameWorld() {
         laserCloudWorld = scan_down_world_;
     }
 
-    if (run_in_offline_ == false && scan_pub_en_) {
+    if (scan_pub_en_) {
         sensor_msgs::PointCloud2 laserCloudmsg;
         pcl::toROSMsg(*laserCloudWorld, laserCloudmsg);
         laserCloudmsg.header.stamp = ros::Time().fromSec(lidar_end_time_);

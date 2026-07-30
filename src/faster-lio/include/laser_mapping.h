@@ -67,6 +67,9 @@ class LaserMapping {
 
     void Finish();
 
+    /// Advertise/subscribe ROS topics (also used by offline eval to publish clouds).
+    void SubAndPubToROS(ros::NodeHandle &nh);
+
    private:
     template <typename T>
     void SetPosestamp(T &out);
@@ -76,8 +79,6 @@ class LaserMapping {
     void PointBodyLidarToIMU(PointType const *const pi, PointType *const po);
 
     void MapIncremental();
-
-    void SubAndPubToROS(ros::NodeHandle &nh);
 
     bool LoadParams(ros::NodeHandle &nh);
     bool LoadParamsFromYAML(const std::string &yaml);

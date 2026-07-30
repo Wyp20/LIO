@@ -16,6 +16,7 @@ def main() -> int:
     ap.add_argument("--bag", required=True)
     ap.add_argument("--lid-topic", default="/lidar_points")
     ap.add_argument("--imu-topic", default="/fvs/imu_raw")
+    ap.add_argument("--start-sec", type=float, default=0.0, help="Skip this many seconds from bag start")
     ap.add_argument("--max-sec", type=float, default=0.0, help="Stop after this much bag time (0=all)")
     ap.add_argument("--rate", type=float, default=0.0, help="Playback rate; 0 = as-fast-as-possible")
     ap.add_argument("--warmup-sec", type=float, default=1.0)
@@ -47,9 +48,13 @@ def main() -> int:
             ts = t.to_sec()
             if t_start is None:
                 t_start = ts
+            # Skip until start_sec
+            if (ts - t_start) < args.start_sec:
+                continue
+            if bag_t0 is None:
                 bag_t0 = ts
                 wall0 = time.time()
-            if args.max_sec > 0 and (ts - t_start) > args.max_sec:
+            if args.max_sec > 0 and (ts - bag_t0) > args.max_sec:
                 break
             if args.rate > 0 and bag_t0 is not None and wall0 is not None:
                 target = wall0 + (ts - bag_t0) / args.rate

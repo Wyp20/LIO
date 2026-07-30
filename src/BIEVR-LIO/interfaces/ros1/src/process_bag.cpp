@@ -7,6 +7,10 @@
 #include <tbb/global_control.h>
 #include <tbb/task_arena.h>
 
+#include <cstdlib>
+#include <string>
+#include <unistd.h>
+
 #include "bievr_lio/config_loader.h"
 #include "bievr_lio_ros/publisher.h"
 #include "bievr_ros_common/conversions.h"
@@ -47,7 +51,33 @@ int main(int argc, char** argv) {
   std::vector<std::string> topics = {config.topic_config.pointcloud_topic,
                                      config.topic_config.imu_topic};
 
-  rosbag::View bag_view(bag, rosbag::TopicQuery(topics));
+  double start_sec = 0.0;
+  double duration_sec = 0.0;
+  if (const char* e = std::getenv("LIO_BAG_START_SEC")) {
+    try {
+      start_sec = std::stod(e);
+    } catch (...) {
+    }
+  }
+  if (const char* e = std::getenv("LIO_BAG_DURATION_SEC")) {
+    try {
+      duration_sec = std::stod(e);
+    } catch (...) {
+    }
+  }
+  ros::param::param("/bag_start_sec", start_sec, start_sec);
+  ros::param::param("/bag_duration_sec", duration_sec, duration_sec);
+
+  rosbag::View full(bag, rosbag::TopicQuery(topics));
+  ros::Time t0 = full.getBeginTime() + ros::Duration(start_sec);
+  ros::Time t1 = full.getEndTime();
+  if (duration_sec > 0.0) {
+    t1 = t0 + ros::Duration(duration_sec);
+    if (t1 > full.getEndTime()) t1 = full.getEndTime();
+  }
+  LOG(I, true, "Bag window start=" << start_sec << "s duration=" << duration_sec << "s");
+
+  rosbag::View bag_view(bag, rosbag::TopicQuery(topics), t0, t1);
   for (const rosbag::MessageInstance& msg : bag_view) {
     if (!ros::ok()) {
       break;
@@ -58,6 +88,11 @@ int main(int argc, char** argv) {
       bievr::StampedIntensityPointcloud pointcloud;
       bievr::msgToPointcloud(*s, pointcloud);
       synchronizer.addPointcloud(pointcloud);
+      ros::spinOnce();
+      if (const char* e = std::getenv("LIO_CLOUD_PACE_MS")) {
+        const int ms = std::atoi(e);
+        if (ms > 0) usleep(static_cast<useconds_t>(ms) * 1000);
+      }
     }
 #ifdef BIEVR_WITH_LIVOX
     else if ((msg.getDataType() == "livox_ros_driver/CustomMsg")) {

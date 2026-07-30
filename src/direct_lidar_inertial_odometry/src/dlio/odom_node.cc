@@ -28,13 +28,16 @@ int main(int argc, char** argv) {
 
   if (offline_mode) {
     node.start();
-    ROS_INFO("DLIO offline bag mode");
+    ROS_INFO("DLIO offline bag mode (IMU lookahead 0.15s for deskew)");
     while (ros::ok()) {
+      // Deskew waits for IMU stamps past scan end; feed a short IMU horizon
+      // after each cloud before invoking the lidar callback.
       bool fed = bag_feeder.feedUntilLidar(
           [&](const sensor_msgs::Imu::ConstPtr& msg) { node.callbackImu(msg); },
           [&](const sensor_msgs::PointCloud2::ConstPtr& msg) {
             node.callbackPointCloud(msg);
-          });
+          },
+          0.15);
       if (!fed && bag_feeder.done()) break;
     }
     return 0;

@@ -219,6 +219,10 @@ void PointCloudPreprocess::HesaiHandler(const sensor_msgs::PointCloud2::ConstPtr
     std::vector<float> time_last(num_scans_, 0.0);  // last offset time
     /*****************************************************************/
 
+    if (plsize < 1) {
+        return;
+    }
+
     if (pl_orig.points[plsize - 1].timestamp > 0) {
         given_offset_time_ = true;
     } else {
