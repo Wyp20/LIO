@@ -933,6 +933,7 @@ int main(int argc, char **argv) {
 
             total_time = t_downsample + scan_match_time + solve_time +
                          map_incremental_time + undistort_time + calc_point_cov_time;
+            printf("[Frame Time] %.3f ms\n", total_time);
 
             if (enable_write && scanIdx % 10 == 0) {
                 foutC << std::fixed << std::setprecision(10) << Measures.lidar_beg_time << " ";

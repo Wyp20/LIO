@@ -164,6 +164,14 @@ void Pipeline::processFrame(const std::vector<ImuMeasurement>& imu_data,
 
   step_timer.Stop();
 
+  {
+    static double prev_step_total = 0.0;
+    const double total = timing::Timing::GetTotalSeconds("step");
+    const double last_ms = (total - prev_step_total) * 1000.0;
+    prev_step_total = total;
+    LOG(I, "[Frame Time] " << last_ms << " ms");
+  }
+
   if (!config_.log_path.empty()) {
     logTUM(nsToS(points_L.end_stamp), T_W_I);
   }

@@ -1341,6 +1341,7 @@ int main(int argc, char **argv) {
       time_vec_tmp[4] = time_vec_tmp[5] - time_vec_tmp[0] - time_vec_tmp[1] - time_vec_tmp[2] - time_vec_tmp[3];
 
       total_time = time_vec_tmp[5];
+      printf("[Frame Time] %.3f ms\n", total_time * 1000.0);
       /******* Publish functions:  *******/
       publish_odometry(pubOdomAftMapped);
       publish_path(pubPath);

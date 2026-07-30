@@ -1009,9 +1009,12 @@ int main(int argc, char** argv)
             // publish_map(pubLaserCloudMap);
 
             /*** Debug variables ***/
-            if (runtime_pos_log)
             {
                 frame_num ++;
+                const double frame_ms = (t5 - t0) * 1000.0;
+                printf("[Frame Time] %.3f ms\n", frame_ms);
+                if (runtime_pos_log)
+                {
                 kdtree_size_end = ikdtree.size();
                 aver_time_consu = aver_time_consu * (frame_num - 1) / frame_num + (t5 - t0) / frame_num;
                 aver_time_icp = aver_time_icp * (frame_num - 1)/frame_num + (t_update_end - t_update_start) / frame_num;
@@ -1036,6 +1039,7 @@ int main(int argc, char** argv)
                 fout_out << setw(20) << Measures.lidar_beg_time - first_lidar_time << " " << euler_cur.transpose() << " " << state_point.pos.transpose()<< " " << ext_euler.transpose() << " "<<state_point.offset_T_L_I.transpose()<<" "<< state_point.vel.transpose() \
                 <<" "<<state_point.bg.transpose()<<" "<<state_point.ba.transpose()<<" "<<state_point.grav<<" "<<feats_undistort->points.size()<<endl;
                 dump_lio_state_to_log(fp);
+                }
             }
         }
 

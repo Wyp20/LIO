@@ -29,7 +29,7 @@ mapping:
 publish:
     path_en: false
     scan_publish_en: true
-    dense_publish_en: false
+    dense_publish_en: true
     scan_bodyframe_pub_en: false
 
 pcd_save:

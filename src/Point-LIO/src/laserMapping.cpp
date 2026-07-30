@@ -169,17 +169,14 @@ void publish_frame_world(const ros::Publisher & pubLaserCloudFullRes)
 {
     if (scan_pub_en)
     {
-        PointCloudXYZI::Ptr laserCloudFullRes(feats_down_body);
+        PointCloudXYZI::Ptr laserCloudFullRes(dense_pub_en ? feats_undistort : feats_down_body);
         int size = laserCloudFullRes->points.size();
 
         PointCloudXYZI::Ptr   laserCloudWorld(new PointCloudXYZI(size, 1));
         
         for (int i = 0; i < size; i++)
         {
-            laserCloudWorld->points[i].x = feats_down_world->points[i].x;
-            laserCloudWorld->points[i].y = feats_down_world->points[i].y;
-            laserCloudWorld->points[i].z = feats_down_world->points[i].z;
-            laserCloudWorld->points[i].intensity = feats_down_world->points[i].intensity; // feats_down_world->points[i].y; //
+            pointBodyToWorld(&laserCloudFullRes->points[i], &laserCloudWorld->points[i]);
         }
         sensor_msgs::PointCloud2 laserCloudmsg;
         pcl::toROSMsg(*laserCloudWorld, laserCloudmsg);
@@ -1044,9 +1041,11 @@ int main(int argc, char** argv)
             if (scan_pub_en && scan_body_pub_en) publish_frame_body(pubLaserCloudFullRes_body);
             
             /*** Debug variables Logging ***/
-            if (runtime_pos_log)
             {
                 frame_num ++;
+                printf("[Frame Time] %.3f ms\n", (t5 - t0) * 1000.0);
+                if (runtime_pos_log)
+                {
                 aver_time_consu = aver_time_consu * (frame_num - 1) / frame_num + (t5 - t0) / frame_num;
                 {aver_time_icp = aver_time_icp * (frame_num - 1)/frame_num + update_time/frame_num;}
                 aver_time_match = aver_time_match * (frame_num - 1)/frame_num + (match_time)/frame_num;
@@ -1074,6 +1073,7 @@ int main(int argc, char** argv)
                     }
                 }
                 dump_lio_state_to_log(fp);
+                }
             }
         }
         status = ros::ok();

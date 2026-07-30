@@ -53,7 +53,7 @@ visualization:
     pub_voxel_map: false
     pub_max_voxel_layer: 1
     pub_point_cloud: true
-    dense_map_enable: false
+    dense_map_enable: true
     pub_point_cloud_skip: 1
     pub_effect: false
     pub_all_plane_enable: false

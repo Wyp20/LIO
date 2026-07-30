@@ -1,6 +1,7 @@
 
 #include "lio/super_lio.h"
 
+#include <chrono>
 #include <sys/resource.h>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
@@ -196,6 +197,7 @@ bool SuperLIO::map_init(){
 
 void SuperLIO::stateProcess(){
   frame_num_++;
+  auto t_frame0 = std::chrono::high_resolution_clock::now();
   if(g_time_eva){
     time_record_.Evaluate([this](){Propagation_Undistort();}, "Undistort");
     time_record_.Evaluate([this]() { DownSample(); }, "DownSample");
@@ -207,6 +209,12 @@ void SuperLIO::stateProcess(){
     Observe();
     UpdateMap();
   }
+  auto t_frame1 = std::chrono::high_resolution_clock::now();
+  double frame_ms =
+      std::chrono::duration_cast<std::chrono::duration<double>>(t_frame1 - t_frame0)
+          .count() *
+      1000.0;
+  LOG(INFO) << "[Frame Time] " << frame_ms << " ms";
   Output();
   caceData();
 }

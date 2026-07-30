@@ -45,6 +45,9 @@ class Timer {
         } else {
             records_.insert({func_name, TimerRecord(func_name, time_used)});
         }
+        if (func_name == "Laser Mapping Single Run") {
+            LOG(INFO) << "[Frame Time] " << time_used << " ms";
+        }
     }
 
     /// print the run time

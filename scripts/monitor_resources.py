@@ -96,13 +96,16 @@ def main() -> int:
     peak_rss = 0
     peak_cpu = 0.0
     sum_cpu = 0.0
+    sum_mem_pct = 0.0
+    peak_mem_pct = 0.0
     t0 = time.time()
     prev_times = {}
     last_t = t0
+    total_mem = psutil.virtual_memory().total
 
     with out.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["elapsed_sec", "cpu_percent", "rss_bytes", "n_procs"])
+        w.writerow(["elapsed_sec", "cpu_percent", "rss_bytes", "mem_percent", "n_procs"])
         while not stop:
             if args.stop_file and os.path.exists(args.stop_file):
                 break
@@ -117,17 +120,21 @@ def main() -> int:
                 cpu = busy
             last_t = now
             elapsed = now - t0
-            w.writerow([f"{elapsed:.3f}", f"{cpu:.2f}", rss, len(pids)])
+            mem_pct = (rss / total_mem) * 100.0 if total_mem > 0 else 0.0
+            w.writerow([f"{elapsed:.3f}", f"{cpu:.2f}", rss, f"{mem_pct:.4f}", len(pids)])
             f.flush()
-            rows.append((elapsed, cpu, rss))
+            rows.append((elapsed, cpu, rss, mem_pct))
             peak_rss = max(peak_rss, rss)
             peak_cpu = max(peak_cpu, cpu)
+            peak_mem_pct = max(peak_mem_pct, mem_pct)
             sum_cpu += cpu
+            sum_mem_pct += mem_pct
             time.sleep(args.interval)
 
     n = max(len(rows), 1)
     mean_cpu = sum_cpu / n
     mean_rss = sum(r[2] for r in rows) / n if rows else 0
+    mean_mem_pct = sum_mem_pct / n
     summary = {
         "pid": args.pid,
         "samples": len(rows),
@@ -137,6 +144,10 @@ def main() -> int:
         "rss_bytes_mean": mean_rss,
         "rss_bytes_peak": peak_rss,
         "rss_mb_peak": peak_rss / (1024 * 1024),
+        "rss_mb_mean": mean_rss / (1024 * 1024),
+        "mem_percent_mean": mean_mem_pct,
+        "mem_percent_peak": peak_mem_pct,
+        "system_mem_total_bytes": total_mem,
     }
     summary_path.write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary))

@@ -358,7 +358,7 @@ namespace akf_lio
 
         auto frame_end_time = std::chrono::high_resolution_clock::now();
         auto frame_time = std::chrono::duration_cast<std::chrono::duration<double>>(frame_end_time - frame_start_time).count() * 1000;
-        LOG(INFO) << "[Frame Time] Frame " << frame_num_ << " processing time: " << frame_time << " ms";
+        LOG(INFO) << "[Frame Time] " << frame_time << " ms";
 
         LOG(INFO) << "[ mapping ]: In num: " << scan_undistort_->points.size() << " downsamp " << cur_pts
                   << " Map grid num: " << ivox_->NumValidGrids() << " effect num : " << effect_feat_num_;

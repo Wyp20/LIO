@@ -4,7 +4,7 @@ dlio:
   adaptive: true
   pointcloud:
     deskew: true
-    voxelize: true
+    voxelize: false
   imu:
     calibration: true
     intrinsics:

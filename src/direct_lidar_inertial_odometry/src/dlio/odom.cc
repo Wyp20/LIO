@@ -851,6 +851,7 @@ void dlio::OdomNode::callbackPointCloud(const sensor_msgs::PointCloud2ConstPtr& 
 
   // Update some statistics
   this->comp_times.push_back(ros::Time::now().toSec() - then);
+  ROS_INFO("[Frame Time] %.3f ms", this->comp_times.back() * 1000.0);
   this->gicp_hasConverged = this->gicp.hasConverged();
 
   // Debug statements and publish custom DLIO message

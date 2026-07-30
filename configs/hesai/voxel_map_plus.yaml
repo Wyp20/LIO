@@ -36,7 +36,7 @@ visualization:
   pub_voxel_map: false
   pub_voxel_map_period: 50
   pub_point_cloud: true
-  dense_map_enable: false
+  dense_map_enable: true
   pub_point_cloud_skip: false
 
 Result:

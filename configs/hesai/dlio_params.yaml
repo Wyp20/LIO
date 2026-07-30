@@ -8,7 +8,7 @@ dlio:
   map:
     waitUntilMove: true
     dense:
-      filtered: false
+      filtered: false   # publish dense keyframe/map clouds when enabled
     sparse:
       leafSize: 0.25
   odom:
