@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Single-thread offline eval for Hesai bag window [15s, 155s].
-# Dense publish + no-downsample cloud dump to CLOUD_ROOT (default /media/wyp/娱乐).
+# Dense publish + C++ accumulate then PCL ASCII .txt dump to CLOUD_ROOT.
 set -euo pipefail
 
 LIO_WS="${LIO_WS:-/home/wyp/Project_lidar_navigation/LIO}"

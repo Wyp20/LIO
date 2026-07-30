@@ -77,9 +77,10 @@ export TBB_NUM_THREADS=1
 export VECLIB_MAXIMUM_THREADS=1
 export LIO_BAG_START_SEC="$START_SEC"
 export LIO_BAG_DURATION_SEC="$MAX_SEC"
-# Pace offline publishers so dense cloud saver can keep ~140s of frames
+# C++ saver accumulates in RAM then writes once; no publisher pacing needed.
+# Override with LIO_CLOUD_PACE_MS>0 only if a subscriber still drops messages.
 if [[ "$SAVE_CLOUDS" == "1" ]]; then
-  export LIO_CLOUD_PACE_MS="${LIO_CLOUD_PACE_MS:-40}"
+  export LIO_CLOUD_PACE_MS="${LIO_CLOUD_PACE_MS:-0}"
 fi
 
 LOG="${OUT_DIR}/run.log"
@@ -137,11 +138,30 @@ start_cloud_saver() {
   [[ "$SAVE_CLOUDS" == "1" ]] || return 0
   ensure_roscore
   rm -f "$STOP_CLOUD"
-  python3 "${LIO_WS}/scripts/save_clouds.py" \
-    --algo "$ALGO" --out-dir "$OUT_DIR" --cloud-dir "$CLOUD_DIR" \
-    --leaf "$CLOUD_LEAF" --every-n "$CLOUD_EVERY_N" --merge \
-    --stop-file "$STOP_CLOUD" \
-    >"${OUT_DIR}/clouds_saver.log" 2>&1 &
+  # Prefer C++ accumulator (PCL ASCII .txt once at end); fall back to python.
+  local saver_bin
+  saver_bin="$(rospack find lio_cloud_saver 2>/dev/null)/../../devel/lib/lio_cloud_saver/save_clouds_node"
+  if [[ ! -x "$saver_bin" ]]; then
+    saver_bin="${LIO_WS}/devel/lib/lio_cloud_saver/save_clouds_node"
+  fi
+  if [[ -x "$saver_bin" ]]; then
+    echo "[run_one] cloud saver: C++ save_clouds_node -> ${CLOUD_DIR}/cloud_merged.txt"
+    # Do not pin saver to the algo CPU — accumulate/save should not contend with timing.
+    "$saver_bin" \
+      __name:="lio_save_clouds_${ALGO}" \
+      _algo:="$ALGO" \
+      _out_dir:="$OUT_DIR" \
+      _cloud_dir:="$CLOUD_DIR" \
+      _stop_file:="$STOP_CLOUD" \
+      >"${OUT_DIR}/clouds_saver.log" 2>&1 &
+  else
+    echo "[run_one] WARN: save_clouds_node missing, fallback python save_clouds.py"
+    python3 "${LIO_WS}/scripts/save_clouds.py" \
+      --algo "$ALGO" --out-dir "$OUT_DIR" --cloud-dir "$CLOUD_DIR" \
+      --leaf "$CLOUD_LEAF" --every-n "$CLOUD_EVERY_N" --merge \
+      --stop-file "$STOP_CLOUD" \
+      >"${OUT_DIR}/clouds_saver.log" 2>&1 &
+  fi
   echo $! > "${OUT_DIR}/clouds_saver.pid"
   # Wait until subscriber is ready (offline nodes publish very fast).
   sleep 2
@@ -152,6 +172,20 @@ stop_cloud_saver() {
   if [[ -f "${OUT_DIR}/clouds_saver.pid" ]]; then
     local cpid
     cpid="$(cat "${OUT_DIR}/clouds_saver.pid")"
+    # PCL ASCII dump of dense clouds can take a while on USB; wait generously.
+    local i=0
+    while kill -0 "$cpid" 2>/dev/null; do
+      sleep 1
+      i=$((i + 1))
+      if [[ $i -ge 1800 ]]; then
+        echo "[run_one] cloud saver still running after ${i}s, sending SIGTERM"
+        kill -TERM "$cpid" 2>/dev/null || true
+        break
+      fi
+      if [[ $((i % 30)) -eq 0 ]]; then
+        echo "[run_one] waiting cloud saver... ${i}s"
+      fi
+    done
     wait "$cpid" 2>/dev/null || true
   fi
 }

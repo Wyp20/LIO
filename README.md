@@ -26,7 +26,7 @@ Algorithms are forced to **1 thread** (`MP_PROC_NUM=1`, `OMP/TBB_NUM_THREADS=1`,
 # Rebuild after thread / feeder changes
 cd $LIO_WS && catkin_make -DCMAKE_BUILD_TYPE=Release -j$(nproc)
 
-# Full offline eval (CPU%, mem%, frame ms, downsampled clouds)
+# Full offline eval (CPU%, mem%, frame ms, dense PCL ASCII clouds)
 $LIO_WS/scripts/eval_hesai_1thread.sh "$BAG"
 
 # Or one algo:
@@ -35,8 +35,8 @@ $LIO_WS/scripts/run_one.sh --algo fast_lio --bag "$BAG" --start-sec 15 --max-sec
 
 Results land in `results/eval_1thread/<bag>_<window>_1t/<algo>/`:
 - `summary.json` — CPU/mem/frame timing
-- `cloud_merged_ds.txt` — dense published clouds (no downsample), under
-  `/media/wyp/娱乐/lio_eval_clouds/<tag>/<algo>/` by default
+- `cloud_merged.txt` — dense published clouds (PCL ASCII, no downsample), under
+  `/media/wyp/娱乐/lio_eval_clouds/<tag>/<algo>/` by default (C++ `save_clouds_node`)
 - `resources.csv`, `timing.json`, `run.log`
 - Sorted CSVs: `summary_by_rss_peak.csv`, `summary_by_frame_max.csv`, `summary_by_frame_mean.csv`
 
