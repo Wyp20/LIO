@@ -1,4 +1,7 @@
 # Unified Hesai outdoor config for Super-LIO
+# 0 = auto (all cores); 1 = single-thread via tbb::global_control
+max_num_threads: 1
+
 lio:
   map:
     save_map: false
@@ -49,8 +52,8 @@ lio:
     plan_env_body: false
     planner: false
     map: true
-    dense: false
-    pub_step: 10
+    dense: true
+    pub_step: 1
 
   eva:
     timer: true

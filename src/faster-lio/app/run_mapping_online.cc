@@ -6,6 +6,7 @@
 #include <csignal>
 
 #include "laser_mapping.h"
+#include "tbb_thread_limit.hpp"
 
 /// run the lidar mapping in online mode
 
@@ -23,6 +24,14 @@ int main(int argc, char **argv) {
 
     ros::init(argc, argv, "faster_lio");
     ros::NodeHandle nh;
+
+    int max_num_threads = 0;
+    nh.param<int>("max_num_threads", max_num_threads, 0);
+    auto tbb_limit = makeTbbThreadLimit(max_num_threads);
+    if (max_num_threads > 0) {
+        LOG(INFO) << "TBB parallelism limited to " << resolveTbbMaxThreads(max_num_threads)
+                  << " threads (max_num_threads)";
+    }
 
     auto laser_mapping = std::make_shared<faster_lio::LaserMapping>();
     laser_mapping->InitROS(nh);

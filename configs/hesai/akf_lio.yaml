@@ -1,4 +1,7 @@
 # Unified Hesai outdoor config for AKF-LIO
+# 0 = auto (all cores); 1 = single-thread via tbb::global_control
+max_num_threads: 1
+
 common:
   lid_topic: "/lidar_points"
   imu_topic: "/fvs/imu_raw"
@@ -23,7 +26,7 @@ mapping:
 publish:
   path_publish_en: false
   scan_reg_pub_en: true
-  dense_publish_en: false
+  dense_publish_en: true
   map_publish_en: false
   gaussian_publish_en: false
   gaussian_pub_dis: 10

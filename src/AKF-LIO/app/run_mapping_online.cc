@@ -4,6 +4,7 @@
 
 #include "laser_mapping.h"
 #include "offline_bag_feed.hpp"
+#include "tbb_thread_limit.hpp"
 
 /// Online mapping with optional offline bag_path (rosparam / ~bag_path)
 
@@ -23,6 +24,14 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "akf_lio");
     ros::NodeHandle nh;
+
+    int max_num_threads = 0;
+    nh.param<int>("max_num_threads", max_num_threads, 0);
+    auto tbb_limit = makeTbbThreadLimit(max_num_threads);
+    if (max_num_threads > 0) {
+        LOG(INFO) << "TBB parallelism limited to " << resolveTbbMaxThreads(max_num_threads)
+                  << " threads (max_num_threads)";
+    }
 
     auto laser_mapping = std::make_shared<akf_lio::LaserMapping>();
     laser_mapping->InitROS(nh);

@@ -4,6 +4,7 @@
 #include "lio/super_lio.h"
 #include "ros/ROSWrapper.h"
 #include "offline_bag_feed.hpp"
+#include "tbb_thread_limit.hpp"
 
 
 using namespace LI2Sup;
@@ -16,6 +17,16 @@ int main(int argc, char** argv){
   ros::init(argc, argv, "lio");
   signal(SIGINT, SigHandle);
   ros::NodeHandle nh;
+
+  int max_num_threads = 0;
+  nh.param<int>("max_num_threads", max_num_threads, 0);
+  nh.param<int>("/lio/max_num_threads", max_num_threads, max_num_threads);
+  auto tbb_limit = makeTbbThreadLimit(max_num_threads);
+  if (max_num_threads > 0) {
+    ROS_INFO("TBB parallelism limited to %d threads (max_num_threads)",
+             resolveTbbMaxThreads(max_num_threads));
+  }
+
   LoadParamFromRos(nh);
 
   ROSWrapper::Ptr data_wrapper = std::make_shared<ROSWrapper>();

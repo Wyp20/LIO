@@ -1,7 +1,8 @@
-# Hesai / dual-core smoke: keep threads capped, use upstream algorithm defaults.
+# Hesai / single-thread smoke: keep threads capped, use upstream algorithm defaults.
+# max_num_threads → tbb::global_control (0 = auto / all cores).
 # (A minimal yaml left most keys at loader defaults: informed_sampling=false,
 #  dashboard=false — first-frame map build then looks like a hang.)
-max_num_threads: 2
+max_num_threads: 1
 
 map:
   pixel_size_m: 0.05
@@ -28,7 +29,7 @@ imu:
   frame: "body"
 
 debug:
-  publish_all_clouds: false
+  publish_all_clouds: true
   timing: true
   log: false
   dashboard: true

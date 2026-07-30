@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Strip external livox_ros_driver deps and force dual-core MP settings.
+# Strip external livox_ros_driver deps and force single-thread MP settings.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/src"
@@ -11,30 +11,26 @@ strip_pkg_xml() {
   sed -i '/livox_ros_driver/d' "$f"
 }
 
-force_mp2_cmake() {
+force_mp1_cmake() {
   local f="$1"
   [[ -f "$f" ]] || return 0
-  # Replace MP_PROC_NUM autodetection blocks with fixed 2 cores
+  # Replace MP_PROC_NUM autodetection blocks with fixed single thread
   if grep -q 'MP_PROC_NUM' "$f"; then
     python3 - "$f" <<'PY'
 import re,sys
 path=sys.argv[1]
 text=open(path).read()
-# Force after architecture check: always MP_EN + MP_PROC_NUM=2 for x86
 new = re.sub(
 r'if\(CMAKE_SYSTEM_PROCESSOR MATCHES.*?\nelse\(\)\n\s*add_definitions\(-DMP_PROC_NUM=1\)\nendif\(\)',
-'''# LIO benchmark: force 2-thread parallel map update
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" )
-  add_definitions(-DMP_EN)
-  add_definitions(-DMP_PROC_NUM=2)
-  message(STATUS "LIO benchmark: MP_PROC_NUM=2")
-else()
-  add_definitions(-DMP_PROC_NUM=1)
-endif()''',
+'''# LIO eval: force single-thread map update
+add_definitions(-DMP_PROC_NUM=1)
+message(STATUS "LIO eval: MP_PROC_NUM=1")
+''',
 text, count=1, flags=re.S)
 if new==text:
-    # simpler: replace all MP_PROC_NUM=N with 2 and ensure MP_EN
-    new=re.sub(r'add_definitions\(-DMP_PROC_NUM=\d+\)','add_definitions(-DMP_PROC_NUM=2)',text)
+    new=re.sub(r'add_definitions\(-DMP_EN\)\n\s*','',text)
+    new=re.sub(r'add_definitions\(-DMP_PROC_NUM=\d+\)','add_definitions(-DMP_PROC_NUM=1)',new)
+    new=re.sub(r'add_definitions\(-DMP_PROC_NUM="\$\{PROC_NUM\}"\)','add_definitions(-DMP_PROC_NUM=1)',new)
 open(path,'w').write(new)
 print('patched MP', path)
 PY
@@ -59,7 +55,7 @@ for f in \
 do
   [[ -f "$f" ]] || continue
   sed -i '/livox_ros_driver/d' "$f"
-  force_mp2_cmake "$f"
+  force_mp1_cmake "$f"
 done
 
 # faster-lio: keep vendored msg OR disable subdirectory — disable and macro
@@ -70,7 +66,7 @@ if [[ -f "$SRC/faster-lio/CMakeLists.txt" ]]; then
   fi
   # remove gencpp dep on livox
   sed -i 's/ livox_ros_driver_gencpp//' "$SRC/faster-lio/src/CMakeLists.txt" || true
-  force_mp2_cmake "$SRC/faster-lio/CMakeLists.txt"
+  force_mp1_cmake "$SRC/faster-lio/CMakeLists.txt"
 fi
 
 # AKF-LIO: same
@@ -80,11 +76,11 @@ if [[ -f "$SRC/AKF-LIO/CMakeLists.txt" ]]; then
     sed -i '/^project(/a add_definitions(-DDISABLE_LIVOX)' "$SRC/AKF-LIO/CMakeLists.txt"
   fi
   sed -i 's/ livox_ros_driver_gencpp//' "$SRC/AKF-LIO/src/CMakeLists.txt" || true
-  force_mp2_cmake "$SRC/AKF-LIO/CMakeLists.txt"
+  force_mp1_cmake "$SRC/AKF-LIO/CMakeLists.txt"
 fi
 
 # PV-LIO: force MP=2 (already no livox in find_package)
-force_mp2_cmake "$SRC/PV-LIO/CMakeLists.txt"
+force_mp1_cmake "$SRC/PV-LIO/CMakeLists.txt"
 if [[ -f "$SRC/PV-LIO/CMakeLists.txt" ]] && ! grep -q 'DISABLE_LIVOX' "$SRC/PV-LIO/CMakeLists.txt"; then
   sed -i '/^project(/a add_definitions(-DDISABLE_LIVOX)' "$SRC/PV-LIO/CMakeLists.txt"
 fi
@@ -102,4 +98,4 @@ do
   fi
 done
 
-echo "CMake/package.xml livox strip + MP=2 done"
+echo "CMake/package.xml livox strip + MP=1 done"

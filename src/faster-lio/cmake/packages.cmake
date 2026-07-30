@@ -56,4 +56,5 @@ include_directories(
         ${PYTHON_INCLUDE_DIRS}
         ${yaml-cpp_INCLUDE_DIRS}
         include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
 )
